@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GNRE Dashboard · 02/2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0b0f1a;
+    --surface:   #131929;
+    --surface2:  #1a2235;
+    --border:    rgba(255,255,255,0.07);
+    --text:      #e8edf5;
+    --muted:     #7a8ba8;
+    --accent:    #4fc3f7;
+    --gold:      #f0b429;
+    --ok:        #34d399;
+    --wait:      #fb923c;
+    --danger:    #f87171;
+    --ok-bg:     rgba(52,211,153,0.10);
+    --wait-bg:   rgba(251,146,60,0.10);
+    --danger-bg: rgba(248,113,113,0.10);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── BACKGROUND GRID ── */
+  body::before {
+    content:'';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(79,195,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,195,247,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 28px 80px; }
+
+  /* ── HEADER ── */
+  header {
+    padding: 52px 0 36px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+    flex-wrap: wrap;
+  }
+  .header-left h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: #fff;
+  }
+  .header-left h1 span { color: var(--accent); font-style: italic; }
+  .header-left p {
+    margin-top: 8px; font-size: 0.85rem;
+    color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .header-right {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem; color: var(--muted);
+    text-align: right; line-height: 1.7;
+  }
+  .header-right strong { color: var(--accent); }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px; margin-bottom: 40px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 22px;
+    position: relative; overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .kpi:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+  .kpi::after {
+    content:''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 16px 16px 0 0;
+  }
+  .kpi.total::after    { background: linear-gradient(90deg, var(--accent), #818cf8); }
+  .kpi.concil::after   { background: linear-gradient(90deg, var(--ok), #6ee7b7); }
+  .kpi.aguard::after   { background: linear-gradient(90deg, var(--wait), #fde68a); }
+  .kpi.valor::after    { background: linear-gradient(90deg, var(--gold), #fbbf24); }
+
+  .kpi-label { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .kpi-value { font-family: 'DM Serif Display', serif; font-size: 2.4rem; line-height: 1; color: #fff; }
+  .kpi-value.mono { font-family: 'DM Mono', monospace; font-size: 1.5rem; }
+  .kpi-sub { margin-top: 6px; font-size: 0.75rem; color: var(--muted); }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    margin-bottom: 28px;
+  }
+  .filter-bar span { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-right: 4px; }
+  .pill {
+    font-family: 'Syne', sans-serif; font-size: 0.78rem; font-weight: 600;
+    padding: 7px 16px; border-radius: 100px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted);
+    cursor: pointer; transition: all .18s; user-select: none;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--accent); }
+  .pill.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .pill.ok.active    { background: var(--ok);   border-color: var(--ok);   color: #0b1a13; }
+  .pill.wait.active  { background: var(--wait); border-color: var(--wait); color: #1a0d00; }
+
+  /* search */
+  .search-wrap { margin-left: auto; position: relative; }
+  .search-wrap input {
+    font-family: 'DM Mono', monospace; font-size: 0.82rem;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 100px;
+    padding: 8px 16px 8px 36px; outline: none; width: 180px;
+    transition: border-color .2s, width .3s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); width: 220px; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .4; }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); font-weight: 700;
+    padding: 14px 18px; text-align: left;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--accent); }
+  thead th .sort-icon { opacity: .4; margin-left: 4px; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .15s;
+    animation: fadeRow .35s ease both;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(79,195,247,0.04); }
+  @keyframes fadeRow { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: none; } }
+
+  td { padding: 14px 18px; font-size: 0.85rem; vertical-align: middle; }
+
+  .td-uf {
+    font-family: 'DM Mono', monospace; font-weight: 500;
+    font-size: 0.9rem; color: #fff; letter-spacing: 0.05em;
+  }
+  .td-valor {
+    font-family: 'DM Mono', monospace; font-size: 0.84rem;
+    color: var(--text); text-align: right; white-space: nowrap;
+  }
+  .td-valor.destaque { color: var(--gold); font-weight: 500; }
+  .td-date { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+  .td-desc { font-size: 0.78rem; color: var(--muted); max-width: 280px; }
+
+  /* status badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 4px 12px; border-radius: 100px; white-space: nowrap;
+  }
+  .badge.ok     { background: var(--ok-bg);     color: var(--ok);   border: 1px solid rgba(52,211,153,.25); }
+  .badge.wait   { background: var(--wait-bg);   color: var(--wait); border: 1px solid rgba(251,146,60,.25); }
+  .badge.danger { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(248,113,113,.25); }
+
+  /* ── PROGRESS BARS ── */
+  .progress-section { margin: 40px 0 28px; }
+  .progress-section h2 { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
+  .bar-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+  .bar-uf { font-family:'DM Mono',monospace; font-size: 0.78rem; color: var(--muted); width: 56px; text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; background: rgba(255,255,255,0.05); border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 1s cubic-bezier(.16,1,.3,1); }
+  .bar-fill.ok   { background: linear-gradient(90deg, var(--ok), #6ee7b7); }
+  .bar-fill.wait { background: linear-gradient(90deg, var(--wait), #fde68a); }
+  .bar-val { font-family:'DM Mono',monospace; font-size: 0.72rem; color: var(--muted); width: 100px; text-align: right; flex-shrink: 0; }
+
+  /* ── VENCIMENTO TIMELINE ── */
+  .timeline-section { margin: 40px 0 0; }
+  .timeline-section h2 { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+  .timeline { display: flex; gap: 12px; flex-wrap: wrap; }
+  .t-group {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 18px; min-width: 160px; flex: 1;
+  }
+  .t-date { font-family:'DM Mono',monospace; font-size: 0.75rem; color: var(--accent); margin-bottom: 10px; font-weight: 500; }
+  .t-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .t-chip {
+    font-family:'DM Mono',monospace; font-size: 0.68rem;
+    padding: 3px 9px; border-radius: 6px; font-weight: 500;
+    border: 1px solid;
+  }
+  .t-chip.ok   { background: var(--ok-bg);   color: var(--ok);   border-color: rgba(52,211,153,.3); }
+  .t-chip.wait { background: var(--wait-bg); color: var(--wait); border-color: rgba(251,146,60,.3); }
+  .t-total { margin-top: 10px; font-family:'DM Mono',monospace; font-size: 0.72rem; color: var(--muted); }
+  .t-total strong { color: var(--text); }
+
+  /* ── EMPTY ── */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 0.9rem; }
+
+  /* ── FOOTER ── */
+  footer { margin-top: 60px; text-align: center; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.08em; border-top: 1px solid var(--border); padding-top: 28px; }
+
+  /* responsive */
+  @media (max-width: 700px) {
+    .td-desc, th:nth-child(5), td:nth-child(5) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <h1>Conciliação <span>GNRE</span><br/>Competência 02·2026</h1>
+      <p>Saint Germain Brand Ltda · Banco Inter · Ag. 0001-9 · Cc. 103857362</p>
+    </div>
+    <div class="header-right">
+      Extrato disponível<br/><strong>01/03/2026 → 10/03/2026</strong><br/>
+      <span id="clock"></span>
+    </div>
+  </header>
+
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi total">
+      <div class="kpi-label">Total de guias</div>
+      <div class="kpi-value" id="kpi-total">—</div>
+      <div class="kpi-sub">Competência 02/2026</div>
+    </div>
+    <div class="kpi concil">
+      <div class="kpi-label">Conciliadas</div>
+      <div class="kpi-value" id="kpi-concil">—</div>
+      <div class="kpi-sub">Pagas até 09/03</div>
+    </div>
+    <div class="kpi aguard">
+      <div class="kpi-label">Aguardando</div>
+      <div class="kpi-value" id="kpi-aguard">—</div>
+      <div class="kpi-sub">Venc. a partir de 13/03</div>
+    </div>
+    <div class="kpi valor">
+      <div class="kpi-label">Total a recolher</div>
+      <div class="kpi-value mono" id="kpi-valor">—</div>
+      <div class="kpi-sub">Soma de todas as guias</div>
+    </div>
+    <div class="kpi valor">
+      <div class="kpi-label">Já pago</div>
+      <div class="kpi-value mono" id="kpi-pago">—</div>
+      <div class="kpi-sub">Confirmado no extrato</div>
+    </div>
+  </div>
+
+  <!-- TIMELINE POR VENCIMENTO -->
+  <div class="timeline-section">
+    <h2>Calendário de vencimentos</h2>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <!-- BARRAS POR UF -->
+  <div class="progress-section">
+    <h2>Valor por estado</h2>
+    <div id="bars"></div>
+  </div>
+
+  <!-- FILTROS -->
+  <div class="filter-bar">
+    <span>Filtrar</span>
+    <div class="pill active" data-filter="all">Todos</div>
+    <div class="pill ok" data-filter="ok">✅ Conciliado</div>
+    <div class="pill wait" data-filter="wait">🕐 Aguardando</div>
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search" placeholder="Buscar UF..."/>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th data-col="uf">UF <span class="sort-icon">↕</span></th>
+          <th data-col="valor">Valor da Guia <span class="sort-icon">↕</span></th>
+          <th data-col="venc">Vencimento <span class="sort-icon">↕</span></th>
+          <th data-col="pagto">Data Pagto <span class="sort-icon">↕</span></th>
+          <th data-col="desc">Descrição no Extrato</th>
+          <th data-col="status">Status <span class="sort-icon">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="empty" style="display:none">Nenhuma guia encontrada.</div>
+  </div>
+
+  <footer>Dashboard gerado automaticamente · GNRE Competência 02/2026 · Saint Germain Brand Ltda</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ── SUPABASE CONFIG ──────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://oyjquympntpkuphkhugc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_or4fFSeXN6hiqpMdLYwJHg_Jff5FwJ-';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const parseDate = s => s === '—' || !s ? null : new Date(s.split('/').reverse().join('-'));
+
+let DATA = [];
+let currentFilter = 'all';
+let currentSort = { col: null, dir: 1 };
+let currentSearch = '';
+
+// ── CLOCK ────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleDateString('pt-BR') + ' ' + now.toTimeString().slice(0,8);
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ── RENDER TIMELINE ──────────────────────────────────────────────────────────
+function renderTimeline() {
+  const groups = {};
+  DATA.forEach(d => {
+    if (!groups[d.venc]) groups[d.venc] = [];
+    groups[d.venc].push(d);
+  });
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  Object.entries(groups).forEach(([date, items]) => {
+    const total = items.reduce((s,i) => s+i.valor, 0);
+    const div = document.createElement('div');
+    div.className = 't-group';
+    div.innerHTML = `
+      <div class="t-date">${date}</div>
+      <div class="t-chips">${items.map(i=>`<span class="t-chip ${i.status}">${i.uf}</span>`).join('')}</div>
+      <div class="t-total">Total: <strong>${fmt(total)}</strong></div>
+    `;
+    tl.appendChild(div);
+  });
+}
+
+// ── RENDER BARS ───────────────────────────────────────────────────────────────
+function renderBars() {
+  const maxValor = Math.max(...DATA.map(d => d.valor));
+  const sorted = [...DATA].sort((a,b) => b.valor - a.valor);
+  const barsEl = document.getElementById('bars');
+  barsEl.innerHTML = '';
+  sorted.forEach(d => {
+    const pct = (d.valor / maxValor * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-uf">${d.uf}</div>
+      <div class="bar-track"><div class="bar-fill ${d.status}" style="width:0%" data-w="${pct}%"></div></div>
+      <div class="bar-val">${fmt(d.valor)}</div>
+    `;
+    barsEl.appendChild(row);
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.bar-fill').forEach(el => { el.style.width = el.dataset.w; });
+  }, 100);
+}
+
+// ── RENDER KPI ────────────────────────────────────────────────────────────────
+function renderKPI() {
+  const total     = DATA.length;
+  const concil    = DATA.filter(d => d.status === 'ok').length;
+  const aguard    = DATA.filter(d => d.status === 'wait').length;
+  const totalVal  = DATA.reduce((s,d) => s+d.valor, 0);
+  const pagoVal   = DATA.filter(d => d.status === 'ok').reduce((s,d) => s+d.valor, 0);
+
+  document.getElementById('kpi-total').textContent  = total;
+  document.getElementById('kpi-concil').textContent = concil;
+  document.getElementById('kpi-aguard').textContent = aguard;
+  document.getElementById('kpi-valor').textContent  = 'R$ ' + (totalVal/1000).toFixed(1) + 'k';
+  document.getElementById('kpi-pago').textContent   = 'R$ ' + (pagoVal/1000).toFixed(1) + 'k';
+}
+
+// ── RENDER TABLE ─────────────────────────────────────────────────────────────
+function renderTable() {
+  let rows = [...DATA];
+  if (currentFilter === 'ok')   rows = rows.filter(d => d.status === 'ok');
+  if (currentFilter === 'wait') rows = rows.filter(d => d.status === 'wait');
+  if (currentSearch) {
+    const q = currentSearch.toLowerCase();
+    rows = rows.filter(d => d.uf.toLowerCase().includes(q) || d.desc.toLowerCase().includes(q));
+  }
+  if (currentSort.col) {
+    rows.sort((a,b) => {
+      let av = a[currentSort.col], bv = b[currentSort.col];
+      if (currentSort.col === 'valor') return (av - bv) * currentSort.dir;
+      if (currentSort.col === 'venc' || currentSort.col === 'pagto') {
+        const ad = parseDate(av), bd = parseDate(bv);
+        if (!ad && !bd) return 0; if (!ad) return 1; if (!bd) return -1;
+        return (ad - bd) * currentSort.dir;
+      }
+      return String(av).localeCompare(String(bv)) * currentSort.dir;
+    });
+  }
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty');
+  if (rows.length === 0) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = rows.map((d, i) => `
+    <tr style="animation-delay:${i * 0.025}s">
+      <td class="td-uf">${d.uf}</td>
+      <td class="td-valor${d.valor > 50000 ? ' destaque' : ''}">${fmt(d.valor)}</td>
+      <td class="td-date">${d.venc}</td>
+      <td class="td-date">${d.pagto}</td>
+      <td class="td-desc">${d.desc}</td>
+      <td>${d.status === 'ok'
+        ? '<span class="badge ok">✅ Conciliado</span>'
+        : '<span class="badge wait">🕐 Aguardando</span>'
+      }</td>
+    </tr>
+  `).join('');
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderKPI();
+  renderTimeline();
+  renderBars();
+  renderTable();
+}
+
+// ── LOADING STATE ─────────────────────────────────────────────────────────────
+function setLoading(on) {
+  const tbody = document.getElementById('tbody');
+  if (on) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.82rem;">
+      Carregando dados do Supabase…</td></tr>`;
+  }
+}
+
+// ── LOAD FROM SUPABASE ────────────────────────────────────────────────────────
+async function loadData() {
+  setLoading(true);
+  const { data, error } = await sb
+    .from('gnre_conciliacao')
+    .select('*')
+    .eq('competencia', '02/2026')
+    .order('vencimento', { ascending: true });
+
+  if (error) {
+    console.error('Erro Supabase:', error);
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--danger);">
+        Erro ao carregar dados: ${error.message}</td></tr>`;
+    return;
+  }
+
+  DATA = data.map(r => {
+    const vencDate = r.vencimento ? new Date(r.vencimento + 'T12:00:00') : null;
+    const vencStr  = vencDate ? vencDate.toLocaleDateString('pt-BR') : '—';
+    return {
+      uf:    r.uf,
+      valor: parseFloat(r.valor),
+      venc:  vencStr,
+      pagto: r.data_pagto || '—',
+      desc:  r.descricao  || '—',
+      status: r.status,
+    };
+  });
+
+  renderAll();
+}
+
+// ── REALTIME SUBSCRIPTION ─────────────────────────────────────────────────────
+sb.channel('gnre-changes')
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'gnre_conciliacao'
+  }, () => {
+    loadData(); // recarrega ao detectar qualquer alteração
+  })
+  .subscribe();
+
+// ── EVENTOS DE UI ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
+    p.classList.add('active');
+    currentFilter = p.dataset.filter;
+    renderTable();
+  });
+});
+
+document.getElementById('search').addEventListener('input', e => {
+  currentSearch = e.target.value;
+  renderTable();
+});
+
+document.querySelectorAll('thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    currentSort.dir = currentSort.col === col ? currentSort.dir * -1 : 1;
+    currentSort.col = col;
+    document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted'));
+    th.classList.add('sorted');
+    th.querySelector('.sort-icon').textContent = currentSort.dir === 1 ? '↑' : '↓';
+    renderTable();
+  });
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
