@@ -227,6 +227,130 @@
   @media (max-width: 700px) {
     .td-desc, th:nth-child(5), td:nth-child(5) { display: none; }
   }
+
+  /* ── BOTÃO IMPORTAR ── */
+  .btn-import {
+    font-family: 'Syne', sans-serif; font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 10px 20px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+    border: none; color: var(--bg); cursor: pointer;
+    transition: opacity .2s, transform .2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn-import:hover { opacity: .88; transform: translateY(-1px); }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    width: 100%; max-width: 680px;
+    max-height: 90vh; overflow-y: auto;
+    padding: 36px;
+    transform: translateY(20px); transition: transform .25s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
+  .modal-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.6rem; color: #fff; }
+  .modal-header p { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+  .modal-close {
+    background: none; border: none; color: var(--muted);
+    font-size: 1.4rem; cursor: pointer; line-height: 1;
+    padding: 4px 8px; border-radius: 8px; transition: color .15s, background .15s;
+  }
+  .modal-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+
+  /* dropzone */
+  .dropzone {
+    border: 2px dashed rgba(79,195,247,0.3);
+    border-radius: 16px; padding: 40px 24px;
+    text-align: center; cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(79,195,247,0.05); }
+  .dropzone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .dropzone-icon { font-size: 2.4rem; margin-bottom: 12px; }
+  .dropzone p { font-size: 0.85rem; color: var(--muted); }
+  .dropzone strong { color: var(--accent); }
+
+  /* fila de arquivos */
+  .file-queue { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .file-item {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .file-item-name { flex: 1; font-size: 0.82rem; color: var(--text); font-family: 'DM Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-item-status { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; }
+  .file-item-status.aguard  { color: var(--muted); }
+  .file-item-status.lendo   { color: var(--accent); }
+  .file-item-status.ok      { color: var(--ok); }
+  .file-item-status.erro    { color: var(--danger); }
+
+  /* resultado da extração */
+  .extraction-result {
+    margin-top: 8px; padding: 12px 14px;
+    background: rgba(52,211,153,0.07); border: 1px solid rgba(52,211,153,0.2);
+    border-radius: 10px; font-size: 0.77rem;
+    font-family: 'DM Mono', monospace; color: var(--ok);
+    line-height: 1.6;
+  }
+  .extraction-result.erro {
+    background: rgba(248,113,113,0.07); border-color: rgba(248,113,113,0.2);
+    color: var(--danger);
+  }
+
+  /* botão processar */
+  .modal-actions { margin-top: 28px; display: flex; gap: 12px; justify-content: flex-end; }
+  .btn-process {
+    font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 12px 28px; border-radius: 100px;
+    background: linear-gradient(135deg, var(--ok), #6ee7b7);
+    border: none; color: #0b1a13; cursor: pointer;
+    transition: opacity .2s; display: flex; align-items: center; gap: 8px;
+  }
+  .btn-process:hover { opacity: .85; }
+  .btn-process:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-cancel {
+    font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 600;
+    padding: 12px 24px; border-radius: 100px;
+    background: none; border: 1px solid var(--border);
+    color: var(--muted); cursor: pointer; transition: color .2s, border-color .2s;
+  }
+  .btn-cancel:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+
+  /* spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: currentColor; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+
+  /* toast */
+  .toast {
+    position: fixed; bottom: 32px; right: 32px; z-index: 200;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 20px;
+    font-size: 0.82rem; color: var(--text);
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    transform: translateY(20px); opacity: 0;
+    transition: transform .3s, opacity .3s;
+    max-width: 360px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.ok   { border-color: rgba(52,211,153,.4); }
+  .toast.erro { border-color: rgba(248,113,113,.4); }
 </style>
 </head>
 <body>
@@ -241,8 +365,48 @@
     <div class="header-right">
       Extrato disponível<br/><strong>01/03/2026 → 10/03/2026</strong><br/>
       <span id="clock"></span>
+      <button class="btn-import" onclick="openModal()" style="margin-top:12px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Importar PDFs
+      </button>
     </div>
   </header>
+
+  <!-- MODAL IMPORTAR ──────────────────────────────────────── -->
+  <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2>Importar PDFs</h2>
+          <p>GNRE · DUA · DARE-SP · Extrato Banco Inter</p>
+        </div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+
+      <!-- DROPZONE -->
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="file-input" accept=".pdf,.ofx" multiple
+          onchange="handleFiles(this.files)"/>
+        <div class="dropzone-icon">📄</div>
+        <p><strong>Clique para selecionar</strong> ou arraste os PDFs aqui</p>
+        <p style="margin-top:6px;font-size:0.72rem">Aceita múltiplos arquivos · PDF e OFX</p>
+      </div>
+
+      <!-- FILA DE ARQUIVOS -->
+      <div class="file-queue" id="file-queue"></div>
+
+      <!-- AÇÕES -->
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+        <button class="btn-process" id="btn-process" disabled onclick="processAll()">
+          <span id="btn-process-text">Processar e Salvar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
 
   <!-- KPI -->
   <div class="kpi-grid">
@@ -531,6 +695,199 @@ document.querySelectorAll('thead th[data-col]').forEach(th => {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 loadData();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO DE IMPORTAÇÃO DE PDFs
+// ══════════════════════════════════════════════════════════════════════════════
+
+const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+
+const EXTRACTION_PROMPT = `Você é um especialista em documentos fiscais brasileiros.
+Analise o documento e extraia as informações no formato JSON abaixo.
+Responda APENAS com o JSON, sem texto antes ou depois, sem markdown.
+
+Tipos de documento possíveis:
+- "gnre": Guia Nacional de Recolhimento de Tributos Estaduais (ICMS Diferencial de Alíquota EC87)
+- "dua": Documento Único de Arrecadação do ES
+- "dare_sp": Documento de Arrecadação de Receitas Estaduais de SP
+- "extrato": Extrato bancário do Banco Inter
+
+Para guias (gnre, dua, dare_sp), retorne:
+{
+  "tipo": "gnre",
+  "uf": "sigla do estado em maiúsculas (ex: MG, SP, ES)",
+  "valor": número decimal (ex: 86684.21),
+  "vencimento": "YYYY-MM-DD",
+  "numero_documento": "número da guia se houver",
+  "observacao": "informação relevante adicional"
+}
+
+Para extrato bancário, retorne:
+{
+  "tipo": "extrato",
+  "lancamentos": [
+    {
+      "uf": "sigla do estado",
+      "valor": número decimal,
+      "data_pagto": "DD/MM/YYYY",
+      "descricao": "descrição exata do lançamento"
+    }
+  ]
+}
+
+Se não conseguir identificar: {"tipo": "desconhecido", "erro": "motivo"}`;
+
+// ── Estado do modal ─────────────────────────────────────────────────────────
+let fileQueue = [];
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  fileQueue = [];
+  renderQueue();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  fileQueue = [];
+  renderQueue();
+  document.getElementById('file-input').value = '';
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+// Drag & drop
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+});
+
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    if (!fileQueue.find(q => q.file.name === f.name))
+      fileQueue.push({ file: f, status: 'aguard', result: null });
+  });
+  renderQueue();
+  document.getElementById('btn-process').disabled = fileQueue.length === 0;
+}
+
+function renderQueue() {
+  const el = document.getElementById('file-queue');
+  if (!fileQueue.length) { el.innerHTML = ''; return; }
+  el.innerHTML = fileQueue.map(item => {
+    const statusLabel = { aguard:'Aguardando', lendo:'⏳ Lendo…', ok:'✅ Extraído', erro:'❌ Erro', salvo:'💾 Salvo' }[item.status] || item.status;
+    let resultHtml = '';
+    if (item.result && item.status === 'ok') {
+      const r = item.result;
+      if (r.tipo === 'extrato') {
+        resultHtml = `<div class="extraction-result">📋 Extrato · ${r.lancamentos?.length||0} lançamentos<br/>${(r.lancamentos||[]).map(l=>`• ${l.uf} · ${l.data_pagto} · R$ ${Number(l.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}`).join('<br/>')}</div>`;
+      } else if (r.tipo !== 'desconhecido') {
+        resultHtml = `<div class="extraction-result">📄 ${r.tipo.toUpperCase()} · ${r.uf} · Venc: ${r.vencimento ? new Date(r.vencimento+'T12:00:00').toLocaleDateString('pt-BR') : '—'} · R$ ${Number(r.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>`;
+      } else {
+        resultHtml = `<div class="extraction-result erro">⚠️ ${r.erro||'Não identificado'}</div>`;
+      }
+    }
+    if (item.status === 'erro') resultHtml = `<div class="extraction-result erro">❌ ${typeof item.result === 'string' ? item.result : 'Erro ao processar'}</div>`;
+    if (item.status === 'salvo') resultHtml = `<div class="extraction-result">✅ Salvo no Supabase com sucesso</div>`;
+    return `<div class="file-item">
+      <div style="font-size:1.4rem">${item.file.name.endsWith('.ofx')?'🏦':'📄'}</div>
+      <div style="flex:1;min-width:0"><div class="file-item-name">${item.file.name}</div>${resultHtml}</div>
+      <div class="file-item-status ${item.status}">${statusLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Falha ao ler arquivo'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function extractFromFile(file) {
+  const isOFX = file.name.toLowerCase().endsWith('.ofx');
+  let messages;
+  if (isOFX) {
+    const text = await file.text();
+    messages = [{ role:'user', content:[
+      { type:'text', text: EXTRACTION_PROMPT },
+      { type:'text', text: `Conteúdo OFX:\n\n${text.slice(0,8000)}` }
+    ]}];
+  } else {
+    const b64 = await fileToBase64(file);
+    messages = [{ role:'user', content:[
+      { type:'text', text: EXTRACTION_PROMPT },
+      { type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } }
+    ]}];
+  }
+  const resp = await fetch(ANTHROPIC_API, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages })
+  });
+  if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${resp.status}`); }
+  const data = await resp.json();
+  const text = data.content?.find(b=>b.type==='text')?.text||'';
+  return JSON.parse(text.replace(/```json|```/g,'').trim());
+}
+
+async function saveToSupabase(result) {
+  if (result.tipo === 'extrato') {
+    for (const l of (result.lancamentos||[])) {
+      if (!l.uf) continue;
+      await sb.from('gnre_conciliacao').update({
+        status:'ok', data_pagto:l.data_pagto, descricao:l.descricao, updated_at:new Date().toISOString()
+      }).eq('competencia','02/2026').eq('uf',l.uf.toUpperCase());
+    }
+    return;
+  }
+  if (result.tipo === 'desconhecido') return;
+  const uf = result.uf?.toUpperCase();
+  if (!uf) return;
+  const { data: existing } = await sb.from('gnre_conciliacao').select('id').eq('competencia','02/2026').eq('uf',uf).maybeSingle();
+  if (existing) {
+    await sb.from('gnre_conciliacao').update({ valor:result.valor, vencimento:result.vencimento||null, observacao:result.observacao||null, updated_at:new Date().toISOString() }).eq('id',existing.id);
+  } else {
+    await sb.from('gnre_conciliacao').insert({ competencia:'02/2026', uf, valor:result.valor, vencimento:result.vencimento||null, status:'wait', observacao:result.observacao||null });
+  }
+}
+
+async function processAll() {
+  const btn = document.getElementById('btn-process');
+  const btnText = document.getElementById('btn-process-text');
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span> Processando…';
+  for (const item of fileQueue) {
+    if (item.status === 'salvo') continue;
+    item.status = 'lendo'; renderQueue();
+    try {
+      const result = await extractFromFile(item.file);
+      item.result = result;
+      item.status = result.tipo === 'desconhecido' ? 'erro' : 'ok';
+      renderQueue();
+      if (item.status === 'ok') { await saveToSupabase(result); item.status = 'salvo'; renderQueue(); }
+    } catch(err) { item.result = err.message; item.status = 'erro'; renderQueue(); }
+  }
+  btn.disabled = false;
+  btnText.textContent = 'Processar e Salvar';
+  const salvos = fileQueue.filter(f=>f.status==='salvo').length;
+  const erros  = fileQueue.filter(f=>f.status==='erro').length;
+  showToast(salvos > 0 ? `✅ ${salvos} arquivo${salvos>1?'s':''} processado${salvos>1?'s':''} com sucesso${erros>0?` · ${erros} com erro`:''}` : `❌ Nenhum arquivo processado`, salvos>0?'ok':'erro');
+  await loadData();
+}
+
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 4500);
+}
 </script>
 </body>
 </html>
