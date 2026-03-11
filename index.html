@@ -920,7 +920,7 @@ async function loadApiKey() {
       .from('app_settings')
       .select('value')
       .eq('user_id', currentUser.id)
-      .eq('key', 'anthropic_api_key')
+      .eq('key', 'gemini_api_key')
       .maybeSingle();
     cachedApiKey = data?.value || null;
   } catch(e) { cachedApiKey = null; }
@@ -931,16 +931,16 @@ async function saveApiKey() {
   const key = document.getElementById('settings-api-key').value.trim();
   const statusEl = document.getElementById('settings-status');
   const btnText  = document.getElementById('btn-save-key-text');
-  if (!key.startsWith('sk-ant-')) {
+  if (!key.startsWith('AIza') || key.length < 20) {
     statusEl.style.color = '#ff6b6b';
-    statusEl.textContent = '⚠ Chave inválida — deve começar com sk-ant-';
+    statusEl.textContent = '⚠ Chave inválida — chave Gemini deve começar com AIza';
     return;
   }
   btnText.innerHTML = '<span class="spinner"></span> Salvando…';
   try {
     await sb.from('app_settings').upsert({
       user_id: currentUser.id,
-      key: 'anthropic_api_key',
+      key: 'gemini_api_key',
       value: key,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id,key' });
@@ -992,7 +992,7 @@ function toggleSettingsKeyVisibility() {
   }
 }
 
-const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 const EXTRACTION_PROMPT = `Você é um especialista em documentos fiscais brasileiros.
 Analise o documento e extraia as informações no formato JSON abaixo.
@@ -1103,37 +1103,44 @@ function fileToBase64(file) {
 }
 
 async function extractFromFile(file) {
-  const isOFX = file.name.toLowerCase().endsWith('.ofx');
-  let messages;
-  if (isOFX) {
-    const text = await file.text();
-    messages = [{ role:'user', content:[
-      { type:'text', text: EXTRACTION_PROMPT },
-      { type:'text', text: `Conteúdo OFX:\n\n${text.slice(0,8000)}` }
-    ]}];
-  } else {
-    const b64 = await fileToBase64(file);
-    messages = [{ role:'user', content:[
-      { type:'text', text: EXTRACTION_PROMPT },
-      { type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } }
-    ]}];
-  }
   const apiKey = cachedApiKey;
   if (!apiKey) throw new Error('Chave da API não configurada. Clique no ícone ⚙ para configurar.');
-  const resp = await fetch(ANTHROPIC_API, {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages })
+
+  const isOFX = file.name.toLowerCase().endsWith('.ofx');
+  let parts;
+
+  if (isOFX) {
+    const text = await file.text();
+    parts = [
+      { text: EXTRACTION_PROMPT },
+      { text: `Conteúdo OFX:\n\n${text.slice(0, 8000)}` }
+    ];
+  } else {
+    const b64 = await fileToBase64(file);
+    parts = [
+      { text: EXTRACTION_PROMPT },
+      { inline_data: { mime_type: 'application/pdf', data: b64 } }
+    ];
+  }
+
+  const url = `${GEMINI_API_BASE}?key=${apiKey}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { temperature: 0, maxOutputTokens: 1024 }
+    })
   });
-  if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${resp.status}`); }
+
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    throw new Error(e.error?.message || `HTTP ${resp.status}`);
+  }
+
   const data = await resp.json();
-  const text = data.content?.find(b=>b.type==='text')?.text||'';
-  return JSON.parse(text.replace(/```json|```/g,'').trim());
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return JSON.parse(text.replace(/```json|```/g, '').trim());
 }
 
 async function saveToSupabase(result) {
@@ -1195,14 +1202,14 @@ function showToast(msg, type='ok') {
       <div class="modal-header">
         <div>
           <h2>Configurações</h2>
-          <p>CHAVE DA API ANTHROPIC</p>
+          <p>CHAVE DA API GOOGLE GEMINI</p>
         </div>
         <button class="modal-close" onclick="closeSettings()">✕</button>
       </div>
       <div style="margin-bottom:24px">
-        <label style="display:block;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Chave da API Anthropic</label>
+        <label style="display:block;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Chave da API Google Gemini</label>
         <div style="display:flex;gap:8px;align-items:center">
-          <input id="settings-api-key" type="password" placeholder="sk-ant-..." autocomplete="off"
+          <input id="settings-api-key" type="password" placeholder="AIzaSy..." autocomplete="off"
             style="flex:1;background:var(--surface2);border:1px solid var(--border2);color:var(--white);font-family:'DM Mono',monospace;font-size:0.78rem;padding:10px 14px;outline:none;letter-spacing:0.04em;box-sizing:border-box;"/>
           <button onclick="toggleSettingsKeyVisibility()" id="btn-toggle-key"
             style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted);padding:10px 12px;cursor:pointer;font-size:0.72rem;white-space:nowrap;">
@@ -1210,7 +1217,7 @@ function showToast(msg, type='ok') {
           </button>
         </div>
         <p style="margin-top:8px;font-size:0.62rem;color:var(--muted2);letter-spacing:0.06em;">
-          A chave é salva de forma segura no Supabase, vinculada ao seu usuário. Você não precisará informá-la novamente.
+          Obtenha sua chave gratuita em <strong style="color:var(--white)">aistudio.google.com</strong>. Ela é salva no Supabase e não precisará ser informada novamente.
         </p>
       </div>
       <div id="settings-status" style="font-size:0.72rem;color:var(--muted2);min-height:20px;margin-bottom:16px;"></div>
