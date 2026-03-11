@@ -939,18 +939,34 @@ async function saveApiKey() {
   }
   btnText.innerHTML = '<span class="spinner"></span> Salvando…';
   try {
-    // Salva como configuração global — identificada pela chave 'gemini_api_key'
-    await sb.from('app_settings').upsert({
-      user_id: currentUser.id,
-      key: 'gemini_api_key',
-      value: key,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'key' });
+    // Primeiro tenta atualizar se já existe
+    const { data: existing } = await sb
+      .from('app_settings')
+      .select('id')
+      .eq('key', 'gemini_api_key')
+      .single();
+    
+    if (existing) {
+      // Atualiza registro existente
+      await sb.from('app_settings')
+        .update({ value: key, updated_at: new Date().toISOString() })
+        .eq('key', 'gemini_api_key');
+    } else {
+      // Cria novo registro
+      await sb.from('app_settings').insert({
+        user_id: currentUser.id,
+        key: 'gemini_api_key',
+        value: key,
+        updated_at: new Date().toISOString()
+      });
+    }
+    
     cachedApiKey = key;
     statusEl.style.color = '#aaa';
     statusEl.textContent = '✅ Chave salva com sucesso!';
     setTimeout(() => closeSettings(), 1200);
   } catch(e) {
+    console.error('Erro saveApiKey:', e);
     statusEl.style.color = '#ff6b6b';
     statusEl.textContent = '❌ Erro ao salvar: ' + e.message;
   }
