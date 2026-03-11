@@ -404,6 +404,14 @@
   }
   .role-badge.admin { background:rgba(255,255,255,0.12); color:var(--white); }
   .role-badge.visualizador { background:rgba(255,255,255,0.04); color:var(--muted); }
+
+  .btn-settings {
+    background: transparent; border: 1px solid var(--border2);
+    color: var(--muted); padding: 6px 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+  }
+  .btn-settings:hover { border-color: var(--white); color: var(--white); }
   .btn-logout {
     font-family:'Questrial',sans-serif; font-size:0.62rem; font-weight:600;
     letter-spacing:0.1em; text-transform:uppercase;
@@ -475,6 +483,9 @@
           <span id="user-email-display">—</span>
           <span class="role-badge" id="user-role-badge">—</span>
         </div>
+        <button class="btn-settings" id="btn-settings" onclick="openSettings()" style="display:none;" title="Configurações de API">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
         <button class="btn-logout" onclick="doLogout()">Sair</button>
       </div>
       <button class="btn-import" id="btn-import-wrap" onclick="openModal()" style="display:none;margin-top:4px">
@@ -494,7 +505,7 @@
         </div>
         <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
-      <div class="dropzone" id="dropzone">
+            <div class="dropzone" id="dropzone">
         <input type="file" id="file-input" accept=".pdf,.ofx" multiple onchange="handleFiles(this.files)"/>
         <div class="dropzone-icon">📄</div>
         <p><strong>Clique para selecionar</strong> ou arraste os PDFs aqui</p>
@@ -636,9 +647,13 @@ async function onLogin(user) {
   roleEl.textContent  = currentRole === 'admin' ? 'Admin' : 'Visualizador';
   roleEl.className    = `role-badge ${currentRole}`;
 
-  // Botão importar só para admin
-  document.getElementById('btn-import-wrap').style.display =
-    currentRole === 'admin' ? 'flex' : 'none';
+  // Botões só para admin
+  const isAdmin = currentRole === 'admin';
+  document.getElementById('btn-import-wrap').style.display = isAdmin ? 'flex' : 'none';
+  document.getElementById('btn-settings').style.display    = isAdmin ? 'flex' : 'none';
+
+  // Carregar chave da API em background
+  if (isAdmin) loadApiKey();
 
   loadData();
 }
@@ -894,6 +909,89 @@ initAuth();
 // MÓDULO DE IMPORTAÇÃO DE PDFs
 // ══════════════════════════════════════════════════════════════════════════════
 
+
+// ── API KEY (salva no Supabase por usuário) ──────────────────────────────────
+let cachedApiKey = null;
+
+async function loadApiKey() {
+  if (!currentUser) return null;
+  try {
+    const { data } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('user_id', currentUser.id)
+      .eq('key', 'anthropic_api_key')
+      .maybeSingle();
+    cachedApiKey = data?.value || null;
+  } catch(e) { cachedApiKey = null; }
+  return cachedApiKey;
+}
+
+async function saveApiKey() {
+  const key = document.getElementById('settings-api-key').value.trim();
+  const statusEl = document.getElementById('settings-status');
+  const btnText  = document.getElementById('btn-save-key-text');
+  if (!key.startsWith('sk-ant-')) {
+    statusEl.style.color = '#ff6b6b';
+    statusEl.textContent = '⚠ Chave inválida — deve começar com sk-ant-';
+    return;
+  }
+  btnText.innerHTML = '<span class="spinner"></span> Salvando…';
+  try {
+    await sb.from('app_settings').upsert({
+      user_id: currentUser.id,
+      key: 'anthropic_api_key',
+      value: key,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,key' });
+    cachedApiKey = key;
+    statusEl.style.color = '#aaa';
+    statusEl.textContent = '✅ Chave salva com sucesso!';
+    setTimeout(() => closeSettings(), 1200);
+  } catch(e) {
+    statusEl.style.color = '#ff6b6b';
+    statusEl.textContent = '❌ Erro ao salvar: ' + e.message;
+  }
+  btnText.textContent = 'Salvar Chave';
+}
+
+function openSettings() {
+  const overlay = document.getElementById('settings-overlay');
+  overlay.classList.add('open');
+  document.getElementById('settings-status').textContent = '';
+  // Preencher campo se já tiver chave salva
+  const input = document.getElementById('settings-api-key');
+  input.value = cachedApiKey ? '••••••••••••••••••••' : '';
+  input.setAttribute('data-filled', cachedApiKey ? 'true' : 'false');
+  // Limpar ao focar se era placeholder mascarado
+  input.onfocus = () => {
+    if (input.getAttribute('data-filled') === 'true') {
+      input.value = '';
+      input.setAttribute('data-filled', 'false');
+    }
+  };
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function handleSettingsOverlayClick(e) {
+  if (e.target === document.getElementById('settings-overlay')) closeSettings();
+}
+
+function toggleSettingsKeyVisibility() {
+  const input = document.getElementById('settings-api-key');
+  const btn = document.getElementById('btn-toggle-key');
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈 Ocultar';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁 Mostrar';
+  }
+}
+
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
 
 const EXTRACTION_PROMPT = `Você é um especialista em documentos fiscais brasileiros.
@@ -1020,9 +1118,16 @@ async function extractFromFile(file) {
       { type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } }
     ]}];
   }
+  const apiKey = cachedApiKey;
+  if (!apiKey) throw new Error('Chave da API não configurada. Clique no ícone ⚙ para configurar.');
   const resp = await fetch(ANTHROPIC_API, {
     method:'POST',
-    headers:{ 'Content-Type':'application/json' },
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages })
   });
   if (!resp.ok) { const e = await resp.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${resp.status}`); }
@@ -1083,5 +1188,40 @@ function showToast(msg, type='ok') {
   setTimeout(() => t.classList.remove('show'), 4500);
 }
 </script>
+
+  <!-- MODAL CONFIGURAÇÕES -->
+  <div class="modal-overlay" id="settings-overlay" onclick="handleSettingsOverlayClick(event)">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <div>
+          <h2>Configurações</h2>
+          <p>CHAVE DA API ANTHROPIC</p>
+        </div>
+        <button class="modal-close" onclick="closeSettings()">✕</button>
+      </div>
+      <div style="margin-bottom:24px">
+        <label style="display:block;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Chave da API Anthropic</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="settings-api-key" type="password" placeholder="sk-ant-..." autocomplete="off"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border2);color:var(--white);font-family:'DM Mono',monospace;font-size:0.78rem;padding:10px 14px;outline:none;letter-spacing:0.04em;box-sizing:border-box;"/>
+          <button onclick="toggleSettingsKeyVisibility()" id="btn-toggle-key"
+            style="background:var(--surface2);border:1px solid var(--border2);color:var(--muted);padding:10px 12px;cursor:pointer;font-size:0.72rem;white-space:nowrap;">
+            👁 Mostrar
+          </button>
+        </div>
+        <p style="margin-top:8px;font-size:0.62rem;color:var(--muted2);letter-spacing:0.06em;">
+          A chave é salva de forma segura no Supabase, vinculada ao seu usuário. Você não precisará informá-la novamente.
+        </p>
+      </div>
+      <div id="settings-status" style="font-size:0.72rem;color:var(--muted2);min-height:20px;margin-bottom:16px;"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeSettings()">Cancelar</button>
+        <button class="btn-process" onclick="saveApiKey()">
+          <span id="btn-save-key-text">Salvar Chave</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
