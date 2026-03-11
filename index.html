@@ -652,9 +652,6 @@ async function onLogin(user) {
   document.getElementById('btn-import-wrap').style.display = isAdmin ? 'flex' : 'none';
   document.getElementById('btn-settings').style.display    = isAdmin ? 'flex' : 'none';
 
-  // Carregar chave da API em background (todos os usuários precisam para processar)
-  await loadApiKey();
-
   loadData();
 }
 
@@ -910,88 +907,19 @@ initAuth();
 // ══════════════════════════════════════════════════════════════════════════════
 
 
-// ── API KEY (salva no Supabase por usuário) ──────────────────────────────────
-let cachedApiKey = null;
+// ── API KEY (configurada diretamente) ────────────────────────────────────────
+const GEMINI_API_KEY = 'AIzaSyA2DtECjZng8kFvGD_qDhfxhXTFx9wu';
 
-async function loadApiKey() {
-  if (!currentUser) return null;
-  try {
-    // Chave global — qualquer registro com key='gemini_api_key' serve
-    const { data } = await sb
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'gemini_api_key')
-      .limit(1)
-      .maybeSingle();
-    cachedApiKey = data?.value || null;
-  } catch(e) { cachedApiKey = null; }
-  return cachedApiKey;
-}
-
-async function saveApiKey() {
-  const key = document.getElementById('settings-api-key').value.trim();
-  const statusEl = document.getElementById('settings-status');
-  const btnText  = document.getElementById('btn-save-key-text');
-  if (!key.startsWith('AIza') || key.length < 20) {
-    statusEl.style.color = '#ff6b6b';
-    statusEl.textContent = '⚠ Chave inválida — chave Gemini deve começar com AIza';
-    return;
-  }
-  btnText.innerHTML = '<span class="spinner"></span> Salvando…';
-  try {
-    // Primeiro tenta atualizar se já existe
-    const { data: existing } = await sb
-      .from('app_settings')
-      .select('id')
-      .eq('key', 'gemini_api_key')
-      .single();
-    
-    if (existing) {
-      // Atualiza registro existente
-      await sb.from('app_settings')
-        .update({ value: key, updated_at: new Date().toISOString() })
-        .eq('key', 'gemini_api_key');
-    } else {
-      // Cria novo registro
-      await sb.from('app_settings').insert({
-        user_id: currentUser.id,
-        key: 'gemini_api_key',
-        value: key,
-        updated_at: new Date().toISOString()
-      });
-    }
-    
-    cachedApiKey = key;
-    statusEl.style.color = '#aaa';
-    statusEl.textContent = '✅ Chave salva com sucesso!';
-    setTimeout(() => closeSettings(), 1200);
-  } catch(e) {
-    console.error('Erro saveApiKey:', e);
-    statusEl.style.color = '#ff6b6b';
-    statusEl.textContent = '❌ Erro ao salvar: ' + e.message;
-  }
-  btnText.textContent = 'Salvar Chave';
+async function getApiKey() {
+  return GEMINI_API_KEY;
 }
 
 function openSettings() {
-  const overlay = document.getElementById('settings-overlay');
-  overlay.classList.add('open');
-  document.getElementById('settings-status').textContent = '';
-  // Preencher campo se já tiver chave salva
-  const input = document.getElementById('settings-api-key');
-  input.value = cachedApiKey ? '••••••••••••••••••••' : '';
-  input.setAttribute('data-filled', cachedApiKey ? 'true' : 'false');
-  // Limpar ao focar se era placeholder mascarado
-  input.onfocus = () => {
-    if (input.getAttribute('data-filled') === 'true') {
-      input.value = '';
-      input.setAttribute('data-filled', 'false');
-    }
-  };
+  alert('💡 A chave API está configurada diretamente no código para simplificar.\n\nSe precisar alterar, edite a variável GEMINI_API_KEY no arquivo.');
 }
 
 function closeSettings() {
-  document.getElementById('settings-overlay').classList.remove('open');
+  // Função mantida para compatibilidade
 }
 
 function handleSettingsOverlayClick(e) {
@@ -1121,8 +1049,8 @@ function fileToBase64(file) {
 }
 
 async function extractFromFile(file) {
-  const apiKey = cachedApiKey;
-  if (!apiKey) throw new Error('Chave da API não configurada. Clique no ícone ⚙ para configurar.');
+  const apiKey = await getApiKey();
+  if (!apiKey) throw new Error('Chave da API não configurada.');
 
   const isOFX = file.name.toLowerCase().endsWith('.ofx');
   let parts;
