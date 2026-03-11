@@ -652,8 +652,8 @@ async function onLogin(user) {
   document.getElementById('btn-import-wrap').style.display = isAdmin ? 'flex' : 'none';
   document.getElementById('btn-settings').style.display    = isAdmin ? 'flex' : 'none';
 
-  // Carregar chave da API em background
-  if (isAdmin) loadApiKey();
+  // Carregar chave da API em background (todos os usuários precisam para processar)
+  loadApiKey();
 
   loadData();
 }
@@ -916,11 +916,12 @@ let cachedApiKey = null;
 async function loadApiKey() {
   if (!currentUser) return null;
   try {
+    // Chave global — qualquer registro com key='gemini_api_key' serve
     const { data } = await sb
       .from('app_settings')
       .select('value')
-      .eq('user_id', currentUser.id)
       .eq('key', 'gemini_api_key')
+      .limit(1)
       .maybeSingle();
     cachedApiKey = data?.value || null;
   } catch(e) { cachedApiKey = null; }
@@ -938,12 +939,13 @@ async function saveApiKey() {
   }
   btnText.innerHTML = '<span class="spinner"></span> Salvando…';
   try {
+    // Salva como configuração global — identificada pela chave 'gemini_api_key'
     await sb.from('app_settings').upsert({
       user_id: currentUser.id,
       key: 'gemini_api_key',
       value: key,
       updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id,key' });
+    }, { onConflict: 'key' });
     cachedApiKey = key;
     statusEl.style.color = '#aaa';
     statusEl.textContent = '✅ Chave salva com sucesso!';
