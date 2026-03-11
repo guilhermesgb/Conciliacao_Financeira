@@ -830,7 +830,9 @@ function setLoading(on) {
 
 // ── LOAD FROM SUPABASE ────────────────────────────────────────────────────────
 async function loadData() {
+  console.log('🔄 CARREGANDO DADOS DO SUPABASE...');
   setLoading(true);
+  
   const { data, error } = await sb
     .from('gnre_conciliacao')
     .select('*')
@@ -838,12 +840,16 @@ async function loadData() {
     .order('vencimento', { ascending: true });
 
   if (error) {
-    console.error('Erro Supabase:', error);
+    console.error('❌ Erro Supabase loadData:', error);
     document.getElementById('tbody').innerHTML =
       `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--danger);">
         Erro ao carregar dados: ${error.message}</td></tr>`;
+    setLoading(false);
     return;
   }
+
+  console.log(`📊 Dados carregados: ${data.length} registros`);
+  console.log('📋 Dados brutos:', data);
 
   DATA = data.map(r => {
     const vencDate = r.vencimento ? new Date(r.vencimento + 'T12:00:00') : null;
@@ -858,7 +864,14 @@ async function loadData() {
     };
   });
 
+  console.log(`📊 Dados processados: ${DATA.length} registros para exibição`);
+  console.log('🎯 Status por UF:', DATA.reduce((acc, item) => {
+    acc[item.uf] = item.status;
+    return acc;
+  }, {}));
+
   renderAll();
+  console.log('✅ Dashboard atualizado com sucesso');
 }
 
 // ── REALTIME SUBSCRIPTION ─────────────────────────────────────────────────────
@@ -867,10 +880,32 @@ sb.channel('gnre-changes')
     event: '*',
     schema: 'public',
     table: 'gnre_conciliacao'
-  }, () => {
+  }, (payload) => {
+    console.log('🔔 REALTIME UPDATE detectado:', payload);
     loadData(); // recarrega ao detectar qualquer alteração
   })
   .subscribe();
+
+// ── DEBUG: REFRESH MANUAL FORÇADO ─────────────────────────────────────────────
+window.forceRefresh = async () => {
+  console.log('🔄 REFRESH MANUAL FORÇADO...');
+  await loadData();
+};
+
+window.debugSupabase = async () => {
+  console.log('🔍 DEBUG SUPABASE - Consultando diretamente...');
+  const { data, error } = await sb
+    .from('gnre_conciliacao')
+    .select('*')
+    .eq('competencia', '02/2026');
+  
+  if (error) {
+    console.error('❌ Erro na consulta debug:', error);
+  } else {
+    console.log(`📊 Total de registros na base: ${data.length}`);
+    console.table(data);
+  }
+};
 
 // ── EVENTOS DE UI ─────────────────────────────────────────────────────────────
 document.querySelectorAll('.pill').forEach(p => {
@@ -1039,7 +1074,7 @@ async function processOFX(file) {
     const transText = transaction[0];
     
     // Verificar se é pagamento GNRE
-    const memoMatch = transText.match(/<MEMO>.*?"GNRE\s+([A-Z\s]+)".*?<\/MEMO>/);
+    const memoMatch = transText.match(/<MEMO>.*?"GNRE\s+([A-Z]{2})".*?<\/MEMO>/);
     const nameMatch = transText.match(/<NAME>([^<]*GNRE[^<]*)<\/NAME>/) || 
                       transText.match(/<n>([^<]*GNRE[^<]*)<\/n>/);
     
@@ -1049,7 +1084,12 @@ async function processOFX(file) {
       const idMatch = transText.match(/<FITID>([^<]+)<\/FITID>/);
       
       if (amountMatch && dateMatch) {
-        const uf = memoMatch ? memoMatch[1].trim() : extractUFFromName(nameMatch[1]);
+        let uf;
+        if (memoMatch) {
+          uf = memoMatch[1]; // UF já limpa do MEMO: "GNRE PI"
+        } else {
+          uf = extrairUFDaTransacao(nameMatch[1]);
+        }
         const valor = Math.abs(parseFloat(amountMatch[1]));
         const data = formatDate(dateMatch[1]);
         
@@ -1078,82 +1118,220 @@ async function processOFX(file) {
 
 // ── PROCESSAMENTO PDF (GNRE INDIVIDUAL) ──────────────────────────────────────
 async function processPDF(file) {
-  const filename = file.name.toLowerCase();
-  
-  // Extrair UF do nome do arquivo
-  const ufMatch = filename.match(/([a-z]{2})(?:\s+fcp)?\.pdf$/);
-  const uf = ufMatch ? ufMatch[1].toUpperCase() : 'XX';
-  const isFCP = filename.includes('fcp');
-  
-  // Simular extração de dados do PDF baseado no nome
-  const tipoTributo = isFCP ? 'ICMS DIFERENCIAL DE ALIQUOTA - FCP' : 'ICMS DIFERENCIAL DE ALIQUOTA';
-  const competencia = '02/2026'; // Inferir da data atual ou contexto
-  
-  return {
-    tipo: 'gnre',
-    uf: uf,
-    codigo_receita: isFCP ? '100099' : '100129',
-    tipo_tributo: tipoTributo,
-    competencia: competencia,
-    vencimento: null, // Precisaria extrair do PDF
-    valor: null,     // Precisaria extrair do PDF
-    origem: 'PDF',
-    observacao: `GNRE ${uf}${isFCP ? ' FCP' : ''} - Análise baseada no nome do arquivo`
-  };
-}
+  try {
+    console.log(`📄 Processando PDF: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+    
+    const nomeArquivo = file.name.toLowerCase();
+    
+    // Análise ultra-precisa do nome do arquivo baseada nos padrões reais
+    const ufMatch = nomeArquivo.match(/^([a-z]{2})(?:\s+fcp)?\.pdf$/);
+    
+    if (!ufMatch) {
+      console.warn(`⚠️ Nome do arquivo PDF não segue padrão esperado: ${file.name}`);
+      return {
+        tipo: 'pdf_desconhecido',
+        arquivo: file.name,
+        tamanho_kb: (file.size / 1024).toFixed(1),
+        erro: 'Nome do arquivo não segue o padrão UF.pdf ou UF FCP.pdf'
+      };
+    }
+    
+    const uf = ufMatch[1].toUpperCase();
+    const isFCP = nomeArquivo.includes('fcp');
+    
+    // Determinar códigos baseados nos padrões reais encontrados no PDF AL
+    const codigoReceita = isFCP ? '100099' : '100110'; // 100110 é o código real encontrado no PDF
+    const tipoTributo = 'ICMS DIFERENCIAL DE ALIQUOTA' + (isFCP ? ' - FCP' : '');
+    
+    // Inferir competência baseada no contexto (normalmente mês anterior)
+    const agora = new Date();
+    const mesAnterior = new Date(agora.getFullYear(), agora.getMonth() - 1);
+    const competenciaInferida = `${String(mesAnterior.getMonth() + 1).padStart(2, '0')}/${mesAnterior.getFullYear()}`;
+    
+    const resultado = {
+      tipo: 'gnre',
+      arquivo: file.name,
+      tamanho_kb: (file.size / 1024).toFixed(1),
+      uf: uf,
+      subtipo: isFCP ? 'FCP' : 'PRINCIPAL',
+      codigo_receita: codigoReceita,
+      tipo_tributo: tipoTributo,
+      competencia: competenciaInferida,
+      vencimento: null, // Seria extraído do texto PDF em implementação futura
+      valor: null,      // Seria extraído do texto PDF em implementação futura
+      numero_controle: null,
+      observacao: `GNRE ${uf}${isFCP ? ' FCP' : ''} - Análise baseada no nome do arquivo`
+    };
+    
+    console.log(`  ✅ GNRE ${uf} identificada: ${isFCP ? 'FCP' : 'Principal'} - Código ${codigoReceita}`);
+    
+    // TODO: Implementar extração real de texto PDF usando PDF.js
+    // const textoPDF = await extrairTextoPDF(file);
+    // const dadosExtraidos = analisarTextoPDFGnre(textoPDF, uf);
+    // if (dadosExtraidos) {
+    //   resultado.valor = dadosExtraidos.valor;
+    //   resultado.vencimento = dadosExtraidos.vencimento;
+    //   resultado.numero_controle = dadosExtraidos.numero_controle;
+    //   resultado.observacao = `GNRE ${uf}${isFCP ? ' FCP' : ''} - Dados extraídos do PDF`;
+    // }
+    
+    return resultado;
+    
+  } catch (error) {
+    console.error(`❌ Erro ao processar PDF: ${error.message}`);
+    return {
+      tipo: 'erro',
+      arquivo: file.name,
+      erro: `Erro ao processar PDF: ${error.message}`
+    };
+  }
 
 // ── PROCESSAMENTO ZIP (MÚLTIPLOS GNRES) ──────────────────────────────────────
 async function processZIP(file) {
-  const zip = await JSZip.loadAsync(file);
-  const results = [];
-  
-  for (const [filename, zipEntry] of Object.entries(zip.files)) {
-    if (!zipEntry.dir && filename.toLowerCase().endsWith('.pdf')) {
-      // Simular processamento de cada PDF no ZIP
-      const ufMatch = filename.toLowerCase().match(/([a-z]{2})(?:\s+fcp)?\.pdf$/);
-      if (ufMatch) {
-        const uf = ufMatch[1].toUpperCase();
-        const isFCP = filename.toLowerCase().includes('fcp');
+  try {
+    console.log(`📦 Processando ZIP: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+    
+    // Verificar se JSZip está disponível
+    if (!window.JSZip) {
+      throw new Error('JSZip não está carregada. Recarregue a página para carregar a biblioteca.');
+    }
+    
+    const zip = await JSZip.loadAsync(file);
+    const gnresEncontradas = [];
+    let totalArquivos = 0;
+    let arquivosIgnorados = 0;
+    
+    for (const [nomeArquivo, zipEntry] of Object.entries(zip.files)) {
+      if (!zipEntry.dir) {
+        totalArquivos++;
         
-        results.push({
-          uf: uf,
-          tipo: isFCP ? 'FCP' : 'PRINCIPAL',
-          arquivo: filename,
-          processado: true
-        });
+        if (nomeArquivo.toLowerCase().endsWith('.pdf')) {
+          // Análise ultra-precisa baseada nos padrões reais identificados
+          const ufMatch = nomeArquivo.toLowerCase().match(/^([a-z]{2})(?:\s+fcp)?\.pdf$/);
+          
+          if (ufMatch) {
+            const uf = ufMatch[1].toUpperCase();
+            const isFCP = nomeArquivo.toLowerCase().includes('fcp');
+            const tamanhoKB = Math.round((zipEntry._data?.compressedSize || 0) / 1024);
+            
+            gnresEncontradas.push({
+              uf: uf,
+              tipo: isFCP ? 'FCP' : 'PRINCIPAL',
+              arquivo: nomeArquivo,
+              tamanho_kb: tamanhoKB
+            });
+            
+            console.log(`  ✅ ${uf} ${isFCP ? 'FCP' : 'Principal'} (${tamanhoKB} KB)`);
+          } else {
+            console.log(`  ⚠️ PDF ignorado (nome não padrão): ${nomeArquivo}`);
+            arquivosIgnorados++;
+          }
+        } else {
+          console.log(`  ℹ️ Arquivo não-PDF ignorado: ${nomeArquivo}`);
+          arquivosIgnorados++;
+        }
       }
+    }
+    
+    // Agrupar estatísticas por UF
+    const estatisticasPorUF = {};
+    gnresEncontradas.forEach(gnre => {
+      if (!estatisticasPorUF[gnre.uf]) {
+        estatisticasPorUF[gnre.uf] = { principal: false, fcp: false, total: 0 };
+      }
+      estatisticasPorUF[gnre.uf][gnre.tipo.toLowerCase()] = true;
+      estatisticasPorUF[gnre.uf].total++;
+    });
+    
+    const ufsCompletas = Object.keys(estatisticasPorUF).filter(uf => 
+      estatisticasPorUF[uf].principal && estatisticasPorUF[uf].fcp
+    );
+    
+    const ufsSoPrincipal = Object.keys(estatisticasPorUF).filter(uf => 
+      estatisticasPorUF[uf].principal && !estatisticasPorUF[uf].fcp
+    );
+    
+    console.log(`📦 ZIP processado: ${gnresEncontradas.length} GNREs em ${Object.keys(estatisticasPorUF).length} estados`);
+    console.log(`  🔹 Completas (Principal + FCP): ${ufsCompletas.length} - ${ufsCompletas.join(', ')}`);
+    console.log(`  🔸 Só Principal: ${ufsSoPrincipal.length} - ${ufsSoPrincipal.join(', ')}`);
+    
+    return {
+      tipo: 'zip_gnres',
+      arquivo: file.name,
+      tamanho_mb: (file.size / (1024 * 1024)).toFixed(2),
+      total_arquivos: totalArquivos,
+      arquivos_ignorados: arquivosIgnorados,
+      total_gnres: gnresEncontradas.length,
+      gnres_encontradas: gnresEncontradas,
+      estatisticas_por_uf: estatisticasPorUF,
+      ufs_completas: ufsCompletas,
+      ufs_so_principal: ufsSoPrincipal,
+      ufs_identificadas: Object.keys(estatisticasPorUF).sort(),
+      observacao: `ZIP ${file.name}: ${gnresEncontradas.length} GNREs válidas de ${totalArquivos} arquivos (${arquivosIgnorados} ignorados)`
+    };
+    
+  } catch (error) {
+    console.error(`❌ Erro ao processar ZIP: ${error.message}`);
+    return {
+      tipo: 'erro',
+      arquivo: file.name,
+      erro: `Erro ao processar ZIP: ${error.message}`
+    };
+  }
+
+// ── FUNÇÕES AUXILIARES ───────────────────────────────────────────────────────
+function extrairUFDaTransacao(nomeTransacao) {
+  const nomeUpper = nomeTransacao.toUpperCase();
+  
+  // Mapeamento ultra-preciso baseado nos padrões reais encontrados no OFX
+  const padroes = {
+    'GNRE SEFAZ PIAUI': 'PI', 'SEFAZ PIAUI': 'PI', 'PIAUI': 'PI',
+    'SEFAZ PE - GNRE ON-LINE': 'PE', 'SEFAZ PE': 'PE', 'PERNAMBUCO': 'PE',
+    'GUIA DE RECOLHIMENTO': 'PR', 'SEFAZ PR': 'PR', 'PARANA': 'PR',
+    'GNRE SEFAZ MATO GROSSO DO SUL': 'MS', 'SEFAZ MS': 'MS', 'MATO GROSSO DO SUL': 'MS',
+    'GNRE SEFAZ SAO PAULO': 'SP', 'SEFAZ SP': 'SP', 'SAO PAULO': 'SP',
+    'GNRE SEFAZ MINAS GERAIS': 'MG', 'SEFAZ MG': 'MG', 'MINAS GERAIS': 'MG',
+    'GNRE SEFAZ RIO DE JANEIRO': 'RJ', 'SEFAZ RJ': 'RJ', 'RIO DE JANEIRO': 'RJ',
+    'GNRE SEFAZ BAHIA': 'BA', 'SEFAZ BA': 'BA', 'BAHIA': 'BA',
+    'GNRE SEFAZ RIO GRANDE DO SUL': 'RS', 'SEFAZ RS': 'RS', 'RIO GRANDE DO SUL': 'RS',
+    'GNRE SEFAZ CEARA': 'CE', 'SEFAZ CE': 'CE', 'CEARA': 'CE',
+    'GNRE SEFAZ GOIAS': 'GO', 'SEFAZ GO': 'GO', 'GOIAS': 'GO',
+    'GNRE SEFAZ ALAGOAS': 'AL', 'SEFAZ AL': 'AL', 'ALAGOAS': 'AL',
+    'GNRE SEFAZ ACRE': 'AC', 'SEFAZ AC': 'AC', 'ACRE': 'AC',
+    'GNRE SEFAZ AMAPA': 'AP', 'SEFAZ AP': 'AP', 'AMAPA': 'AP',
+    'GNRE SEFAZ AMAZONAS': 'AM', 'SEFAZ AM': 'AM', 'AMAZONAS': 'AM',
+    'GNRE SEFAZ DISTRITO FEDERAL': 'DF', 'SEFAZ DF': 'DF', 'DISTRITO FEDERAL': 'DF',
+    'GNRE SEFAZ ESPIRITO SANTO': 'ES', 'SEFAZ ES': 'ES', 'ESPIRITO SANTO': 'ES',
+    'GNRE SEFAZ MARANHAO': 'MA', 'SEFAZ MA': 'MA', 'MARANHAO': 'MA',
+    'GNRE SEFAZ PARAIBA': 'PB', 'SEFAZ PB': 'PB', 'PARAIBA': 'PB',
+    'GNRE SEFAZ PARA': 'PA', 'SEFAZ PA': 'PA', 'PARA': 'PA',
+    'GNRE SEFAZ RONDONIA': 'RO', 'SEFAZ RO': 'RO', 'RONDONIA': 'RO',
+    'GNRE SEFAZ RORAIMA': 'RR', 'SEFAZ RR': 'RR', 'RORAIMA': 'RR',
+    'GNRE SEFAZ SANTA CATARINA': 'SC', 'SEFAZ SC': 'SC', 'SANTA CATARINA': 'SC',
+    'GNRE SEFAZ SERGIPE': 'SE', 'SEFAZ SE': 'SE', 'SERGIPE': 'SE',
+    'GNRE SEFAZ TOCANTINS': 'TO', 'SEFAZ TO': 'TO', 'TOCANTINS': 'TO',
+    'GNRE SEFAZ MATO GROSSO': 'MT', 'SEFAZ MT': 'MT', 'MATO GROSSO': 'MT',
+    'GNRE SEFAZ RIO GRANDE DO NORTE': 'RN', 'SEFAZ RN': 'RN', 'RIO GRANDE DO NORTE': 'RN'
+  };
+  
+  // Buscar padrão exato primeiro (ordem importa - mais específico primeiro)
+  for (const [padrao, uf] of Object.entries(padroes)) {
+    if (nomeUpper.includes(padrao)) {
+      return uf;
     }
   }
   
-  return {
-    tipo: 'zip_gnres',
-    arquivo: file.name,
-    total_arquivos: results.length,
-    gnres_encontradas: results,
-    observacao: `ZIP contendo ${results.length} GNREs`
-  };
-}
-
-// ── FUNÇÕES AUXILIARES ───────────────────────────────────────────────────────
-function extractUFFromName(name) {
-  const ufPatterns = {
-    'PIAUI': 'PI', 'PERNAMBUCO': 'PE', 'PARANA': 'PR', 'PARA': 'PA',
-    'MATO GROSSO DO SUL': 'MS', 'MATO GROSSO': 'MT', 'MINAS GERAIS': 'MG',
-    'RIO DE JANEIRO': 'RJ', 'RIO GRANDE DO SUL': 'RS', 'RIO GRANDE DO NORTE': 'RN',
-    'SAO PAULO': 'SP', 'SANTA CATARINA': 'SC', 'SERGIPE': 'SE', 'TOCANTINS': 'TO',
-    'BAHIA': 'BA', 'CEARA': 'CE', 'GOIAS': 'GO', 'ALAGOAS': 'AL',
-    'ACRE': 'AC', 'AMAPA': 'AP', 'AMAZONAS': 'AM', 'DISTRITO FEDERAL': 'DF',
-    'ESPIRITO SANTO': 'ES', 'MARANHAO': 'MA', 'PARAIBA': 'PB', 'RONDONIA': 'RO', 'RORAIMA': 'RR'
-  };
+  // Fallback: tentar extrair UF de 2 letras após GNRE ou SEFAZ
+  const ufMatch = nomeUpper.match(/(?:GNRE|SEFAZ)\s+([A-Z]{2})(?:\s|$)/) || 
+                  nomeUpper.match(/([A-Z]{2})\s+(?:GNRE|SEFAZ)/) ||
+                  nomeUpper.match(/\b([A-Z]{2})\b/);
   
-  const upperName = name.toUpperCase();
-  for (const [estado, uf] of Object.entries(ufPatterns)) {
-    if (upperName.includes(estado)) return uf;
+  if (ufMatch) {
+    return ufMatch[1];
   }
   
-  // Tentar extrair UF de 2 letras
-  const ufMatch = upperName.match(/\b([A-Z]{2})\b/);
-  return ufMatch ? ufMatch[1] : 'XX';
+  console.warn(`⚠️ UF não identificada em: "${nomeTransacao}"`);
+  return 'XX'; // Estado não identificado
 }
 
 function formatDate(dateStr) {
@@ -1174,73 +1352,154 @@ const JSZip = window.JSZip || {
 };
 
 async function saveToSupabase(result) {
-  console.log('💾 Salvando resultado:', result);
+  console.log('💾 SALVANDO NO SUPABASE - Tipo:', result.tipo);
+  console.log('📄 Dados completos:', JSON.stringify(result, null, 2));
   
-  if (result.tipo === 'extrato') {
-    // Salvar transações do extrato OFX
-    for (const transacao of (result.transacoes || [])) {
-      if (!transacao.uf) continue;
+  try {
+    if (result.tipo === 'extrato') {
+      console.log('📊 Processando extrato OFX...');
+      const transacoes = result.transacoes || [];
+      console.log(`💰 ${transacoes.length} transações encontradas`);
       
-      // Atualizar GNRE existente com dados de pagamento
-      const { data: existing } = await sb
+      for (let i = 0; i < transacoes.length; i++) {
+        const transacao = transacoes[i];
+        console.log(`\n🔄 Processando transação ${i+1}/${transacoes.length}: ${transacao.uf}`);
+        
+        if (!transacao.uf) {
+          console.warn('⚠️ Transação sem UF, pulando...');
+          continue;
+        }
+        
+        // Buscar GNRE existente
+        console.log(`🔍 Buscando GNRE existente: competencia=02/2026, uf=${transacao.uf}`);
+        const { data: existing, error: searchError } = await sb
+          .from('gnre_conciliacao')
+          .select('id, status, valor')
+          .eq('competencia', '02/2026')
+          .eq('uf', transacao.uf.toUpperCase())
+          .maybeSingle();
+        
+        if (searchError) {
+          console.error('❌ Erro na busca Supabase:', searchError);
+          continue;
+        }
+        
+        if (existing) {
+          console.log(`✅ GNRE encontrada: ID ${existing.id}, Status: ${existing.status}`);
+          
+          const { data: updated, error: updateError } = await sb
+            .from('gnre_conciliacao')
+            .update({
+              status: 'ok',
+              data_pagto: transacao.data_pagamento,
+              descricao: transacao.descricao,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id)
+            .select();
+          
+          if (updateError) {
+            console.error('❌ Erro no update Supabase:', updateError);
+          } else {
+            console.log(`✅ GNRE ${transacao.uf} conciliada: R$ ${transacao.valor} em ${transacao.data_pagamento}`);
+            console.log('📝 Update realizado:', updated);
+          }
+        } else {
+          console.warn(`⚠️ GNRE não encontrada para ${transacao.uf} - pode ser nova ou competência diferente`);
+        }
+      }
+      
+      console.log('✅ Processamento do extrato concluído');
+      return;
+    }
+    
+    if (result.tipo === 'gnre') {
+      console.log('📄 Processando GNRE individual...');
+      const uf = result.uf?.toUpperCase();
+      
+      if (!uf) {
+        console.error('❌ GNRE sem UF válida');
+        return;
+      }
+      
+      const competencia = result.competencia || '02/2026';
+      console.log(`🔍 Buscando GNRE: competencia=${competencia}, uf=${uf}`);
+      
+      const { data: existing, error: searchError } = await sb
         .from('gnre_conciliacao')
-        .select('id')
-        .eq('competencia', '02/2026')
-        .eq('uf', transacao.uf.toUpperCase())
+        .select('id, status, valor')
+        .eq('competencia', competencia)
+        .eq('uf', uf)
         .maybeSingle();
       
-      if (existing) {
-        await sb.from('gnre_conciliacao').update({
-          status: 'ok',
-          data_pagto: transacao.data_pagamento,
-          descricao: transacao.descricao,
-          updated_at: new Date().toISOString()
-        }).eq('id', existing.id);
-        
-        console.log(`✅ Conciliação atualizada: ${transacao.uf} - R$ ${transacao.valor}`);
+      if (searchError) {
+        console.error('❌ Erro na busca Supabase:', searchError);
+        return;
       }
+      
+      if (existing) {
+        console.log(`📝 Atualizando GNRE existente: ID ${existing.id}`);
+        
+        const { data: updated, error: updateError } = await sb
+          .from('gnre_conciliacao')
+          .update({
+            valor: result.valor,
+            vencimento: result.vencimento || null,
+            observacao: result.observacao || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id)
+          .select();
+        
+        if (updateError) {
+          console.error('❌ Erro no update:', updateError);
+        } else {
+          console.log(`✅ GNRE ${uf} atualizada:`, updated);
+        }
+      } else {
+        console.log(`➕ Criando nova GNRE: ${uf}`);
+        
+        const { data: inserted, error: insertError } = await sb
+          .from('gnre_conciliacao')
+          .insert({
+            competencia: competencia,
+            uf: uf,
+            valor: result.valor,
+            vencimento: result.vencimento || null,
+            status: 'wait',
+            observacao: result.observacao || null
+          })
+          .select();
+        
+        if (insertError) {
+          console.error('❌ Erro no insert:', insertError);
+        } else {
+          console.log(`✅ Nova GNRE ${uf} criada:`, inserted);
+        }
+      }
+      
+      return;
     }
-    return;
-  }
-  
-  if (result.tipo === 'gnre') {
-    // Salvar GNRE individual
-    const uf = result.uf?.toUpperCase();
-    if (!uf) return;
     
-    const { data: existing } = await sb
-      .from('gnre_conciliacao')
-      .select('id')
-      .eq('competencia', result.competencia || '02/2026')
-      .eq('uf', uf)
-      .maybeSingle();
-    
-    if (existing) {
-      await sb.from('gnre_conciliacao').update({
-        valor: result.valor,
-        vencimento: result.vencimento || null,
-        observacao: result.observacao || null,
-        updated_at: new Date().toISOString()
-      }).eq('id', existing.id);
-    } else {
-      await sb.from('gnre_conciliacao').insert({
-        competencia: result.competencia || '02/2026',
-        uf: uf,
-        valor: result.valor,
-        vencimento: result.vencimento || null,
-        status: 'wait',
-        observacao: result.observacao || null
-      });
+    if (result.tipo === 'zip_gnres') {
+      console.log(`📦 ZIP processado: ${result.total_gnres} GNREs identificadas`);
+      console.log('📋 Estados encontrados:', result.ufs_identificadas?.join(', '));
+      
+      // ZIP não salva diretamente no banco, só identifica arquivos
+      return;
     }
     
-    console.log(`✅ GNRE salva: ${uf}`);
-    return;
-  }
-  
-  if (result.tipo === 'zip_gnres') {
-    // Processar múltiplas GNREs do ZIP
-    console.log(`📦 ZIP processado: ${result.total_arquivos} GNREs encontradas`);
-    return;
+    if (result.tipo === 'erro' || result.tipo === 'pdf_desconhecido') {
+      console.warn(`⚠️ Resultado de erro/desconhecido não salvo: ${result.erro}`);
+      return;
+    }
+    
+    console.warn(`⚠️ Tipo não reconhecido para salvamento: ${result.tipo}`);
+    
+  } catch (error) {
+    console.error('❌ ERRO CRÍTICO no saveToSupabase:', error);
+    console.error('Stack:', error.stack);
+    throw error; // Re-throw para ser capturado pelo processAll
   }
 }
 
@@ -1249,23 +1508,70 @@ async function processAll() {
   const btnText = document.getElementById('btn-process-text');
   btn.disabled = true;
   btnText.innerHTML = '<span class="spinner"></span> Processando…';
+  
+  console.log('🚀 INICIANDO PROCESSAMENTO ULTRA-DETALHADO...');
+  console.log(`📊 Total de arquivos na fila: ${fileQueue.length}`);
+  
   for (const item of fileQueue) {
-    if (item.status === 'salvo') continue;
-    item.status = 'lendo'; renderQueue();
+    if (item.status === 'salvo') {
+      console.log(`⏩ Pulando ${item.file.name} (já salvo)`);
+      continue;
+    }
+    
+    console.log(`\n📄 PROCESSANDO: ${item.file.name} (${(item.file.size/1024).toFixed(1)}KB)`);
+    
+    item.status = 'lendo'; 
+    renderQueue();
+    
     try {
+      // ANÁLISE LOCAL
+      console.log('🔍 Iniciando análise local...');
+      const startTime = performance.now();
       const result = await extractFromFile(item.file);
+      const analyzeTime = (performance.now() - startTime).toFixed(2);
+      
+      console.log(`⏱️ Análise concluída em ${analyzeTime}ms`);
+      console.log('📋 Resultado completo:', JSON.stringify(result, null, 2));
+      
       item.result = result;
       item.status = result.tipo === 'desconhecido' ? 'erro' : 'ok';
       renderQueue();
-      if (item.status === 'ok') { await saveToSupabase(result); item.status = 'salvo'; renderQueue(); }
-    } catch(err) { item.result = err.message; item.status = 'erro'; renderQueue(); }
+      
+      if (item.status === 'ok') {
+        console.log('💾 Iniciando salvamento no Supabase...');
+        
+        const saveStartTime = performance.now();
+        await saveToSupabase(result);
+        const saveTime = (performance.now() - saveStartTime).toFixed(2);
+        
+        console.log(`✅ Salvo no Supabase em ${saveTime}ms`);
+        item.status = 'salvo';
+        renderQueue();
+      } else {
+        console.warn(`⚠️ Arquivo marcado como erro: ${result.tipo}`);
+      }
+    } catch(err) {
+      console.error(`❌ ERRO CRÍTICO em ${item.file.name}:`, err);
+      console.error('Stack trace:', err.stack);
+      item.result = err.message;
+      item.status = 'erro';
+      renderQueue();
+    }
   }
+  
   btn.disabled = false;
   btnText.textContent = 'Processar e Salvar';
+  
   const salvos = fileQueue.filter(f=>f.status==='salvo').length;
   const erros  = fileQueue.filter(f=>f.status==='erro').length;
+  
+  console.log(`📊 RESULTADO FINAL: ${salvos} salvos, ${erros} erros`);
+  
   showToast(salvos > 0 ? `✅ ${salvos} arquivo${salvos>1?'s':''} processado${salvos>1?'s':''} com sucesso${erros>0?` · ${erros} com erro`:''}` : `❌ Nenhum arquivo processado`, salvos>0?'ok':'erro');
+  
+  console.log('🔄 Recarregando dados do dashboard...');
   await loadData();
+  console.log('🎉 PROCESSAMENTO E ATUALIZAÇÃO CONCLUÍDOS!');
 }
 
 function showToast(msg, type='ok') {
