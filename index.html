@@ -653,7 +653,7 @@ async function onLogin(user) {
   document.getElementById('btn-settings').style.display    = isAdmin ? 'flex' : 'none';
 
   // Carregar chave da API em background (todos os usuários precisam para processar)
-  loadApiKey();
+  await loadApiKey();
 
   loadData();
 }
