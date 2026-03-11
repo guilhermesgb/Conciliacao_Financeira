@@ -604,6 +604,9 @@ const SUPABASE_URL = 'https://oyjquympntpkuphkhugc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_or4fFSeXN6hiqpMdLYwJHg_Jff5FwJ-';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ── INICIALIZAÇÃO GLOBAL DA CHAVE API ────────────────────────────────────────
+window.GEMINI_API_KEY = 'AIzaSyA2DtECjZng8kFvGD_qDhfxhXTFx9wu';
+
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 let currentUser = null;
 let currentRole = null; // 'admin' | 'visualizador'
@@ -907,11 +910,12 @@ initAuth();
 // ══════════════════════════════════════════════════════════════════════════════
 
 
-// ── API KEY (configurada diretamente) ────────────────────────────────────────
+// ── API KEY (configurada em múltiplos locais para garantir funcionamento) ──────
 const GEMINI_API_KEY = 'AIzaSyA2DtECjZng8kFvGD_qDhfxhXTFx9wu';
+window.GEMINI_API_KEY = 'AIzaSyA2DtECjZng8kFvGD_qDhfxhXTFx9wu';
 
 async function getApiKey() {
-  return GEMINI_API_KEY;
+  return window.GEMINI_API_KEY || GEMINI_API_KEY || 'AIzaSyA2DtECjZng8kFvGD_qDhfxhXTFx9wu';
 }
 
 function openSettings() {
@@ -1049,8 +1053,14 @@ function fileToBase64(file) {
 }
 
 async function extractFromFile(file) {
-  const apiKey = await getApiKey();
-  if (!apiKey) throw new Error('Chave da API não configurada.');
+  // Múltiplas formas de obter a chave API para garantir funcionamento
+  const apiKey = await getApiKey() || 
+                 window.GEMINI_API_KEY || 
+                 'AIzaSyA2DtECjZng8kFvGD_qDhfxhXTFx9wu';
+  
+  if (!apiKey || !apiKey.startsWith('AIza')) {
+    throw new Error('Chave da API não configurada corretamente. Contate o administrador.');
+  }
 
   const isOFX = file.name.toLowerCase().endsWith('.ofx');
   let parts;
