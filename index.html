@@ -1567,7 +1567,7 @@ async function processAll() {
   
   console.log(`📊 RESULTADO FINAL: ${salvos} salvos, ${erros} erros`);
   
-  showToast(salvos > 0 ? `✅ ${salvos} arquivo${salvos>1?'s':''} processado${salvos>1?'s':''} com sucesso${erros>0?` · ${erros} com erro`:''}` : `❌ Nenhum arquivo processado`, salvos>0?'ok':'erro');
+  showToast(salvos > 0 ? `✅ ${salvos} arquivo${salvos>1?'s':''} processado${salvos>1?'s':''} com sucesso${erros>0?' · '+erros+' com erro':''}` : `❌ Nenhum arquivo processado`, salvos>0?'ok':'erro');
   
   console.log('🔄 Recarregando dados do dashboard...');
   await loadData();
@@ -1579,6 +1579,29 @@ function showToast(msg, type='ok') {
   t.textContent = msg;
   t.className = `toast ${type} show`;
   setTimeout(() => t.classList.remove('show'), 4500);
+}
+
+// ── FUNÇÕES DO MODAL DE CONFIGURAÇÕES ─────────────────────────────────────────
+function handleSettingsOverlayClick(event) {
+  if (event.target === document.getElementById('settings-overlay')) {
+    closeSettings();
+  }
+}
+
+function toggleSettingsKeyVisibility() {
+  const input = document.getElementById('settings-api-key');
+  const btn = document.getElementById('btn-toggle-key');
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈 Ocultar';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁 Mostrar';
+  }
+}
+
+function saveApiKey() {
+  alert('⚠️ Sistema local ativo!\n\nO sistema agora funciona sem necessidade de chave API.\nEsta configuração foi desabilitada.');
 }
 </script>
 
