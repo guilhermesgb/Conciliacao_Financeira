@@ -1,114 +1,764 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Conciliação Financeira</title>
-  <link href="https://fonts.googleapis.com/css2?family=Questrial:wght@400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Questrial:wght@400&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet"/>
   <style>
-    :root {
-      --bg: #000; --surface: #111; --surface2: #1a1a1a; --border: #333; --border2: #444;
-      --white: #fff; --muted: #999; --muted2: #666; --primary: #0ea5e9; --danger: #ef4444;
-      --success: #10b981; --warning: #f59e0b;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: var(--bg); color: var(--white); font-family: 'Questrial', sans-serif; overflow-x: hidden; }
-    .app { display: grid; grid-template-columns: 1fr; min-height: 100vh; gap: 0; }
-    .header { background: var(--surface); padding: 20px 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .header h1 { font-size: 1.5rem; }
-    .header .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
-    .main { padding: 40px; overflow-x: auto; }
-    .btn { background: var(--primary); color: var(--white); border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
-    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-    .btn:disabled { background: var(--muted2); cursor: not-allowed; transform: none; }
-    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--white); border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: none; align-items: center; justify-content: center; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: var(--surface2); border-radius: 12px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
-    .modal h2 { margin-bottom: 16px; }
-    .file-queue { margin: 16px 0; }
-    .file-item { background: var(--surface); padding: 12px; border-radius: 6px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
-    .file-status { width: 12px; height: 12px; border-radius: 50%; }
-    .file-status.wait { background: var(--muted); }
-    .file-status.lendo { background: var(--warning); }
-    .file-status.ok { background: var(--success); }
-    .file-status.salvo { background: var(--primary); }
-    .file-status.erro { background: var(--danger); }
-    .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 6px; color: var(--white); transform: translateX(100%); transition: transform 0.3s; z-index: 2000; }
-    .toast.show { transform: translateX(0); }
-    .toast.ok { background: var(--success); }
-    .toast.erro { background: var(--danger); }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
-    th { background: var(--surface2); font-weight: 500; }
-    .status-ok { color: var(--success); }
-    .status-wait { color: var(--warning); }
+:root {
+  --bg: #000000;
+  --surface: #111111;
+  --surface2: #1a1a1a;
+  --surface3: #222222;
+  --border: #333333;
+  --border2: #444444;
+  --white: #ffffff;
+  --muted: #999999;
+  --muted2: #666666;
+  --primary: #0ea5e9;
+  --primary2: #0891b2;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Questrial', sans-serif;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+  gap: 0;
+}
+
+.header {
+  background: var(--surface);
+  padding: 20px 40px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--border2);
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--white);
+}
+
+.header .subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 300;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--primary2);
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  background: var(--muted2);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+}
+
+.btn-outline:hover {
+  background: var(--surface2);
+  color: var(--white);
+  border-color: var(--border);
+}
+
+.btn-danger {
+  background: var(--danger);
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--white);
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.main {
+  padding: 40px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.dashboard {
+  display: grid;
+  gap: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.section {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.section-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--white);
+}
+
+.section-content {
+  padding: 24px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.kpi {
+  background: var(--surface2);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+}
+
+.kpi-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 1.8rem;
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  color: var(--white);
+}
+
+.table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border2);
+}
+
+th {
+  background: var(--surface3);
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+tr:hover {
+  background: var(--surface2);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.uf {
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.valor {
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  text-align: right;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-ok {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-wait {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal {
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modal-header {
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal h2 {
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: var(--white);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: var(--surface2);
+  color: var(--white);
+}
+
+.modal-content {
+  padding: 24px;
+}
+
+.file-upload {
+  border: 2px dashed var(--border2);
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  margin-bottom: 24px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.file-upload:hover {
+  border-color: var(--primary);
+  background: rgba(14, 165, 233, 0.05);
+}
+
+.file-upload.dragover {
+  border-color: var(--primary);
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.upload-icon {
+  font-size: 3rem;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.upload-text {
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.upload-hint {
+  font-size: 0.8rem;
+  color: var(--muted2);
+}
+
+#file-input {
+  display: none;
+}
+
+.file-queue {
+  margin-bottom: 24px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border2);
+}
+
+.file-status {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.file-status.wait {
+  background: var(--muted);
+}
+
+.file-status.lendo {
+  background: var(--warning);
+}
+
+.file-status.ok {
+  background: var(--success);
+}
+
+.file-status.salvo {
+  background: var(--primary);
+}
+
+.file-status.erro {
+  background: var(--danger);
+}
+
+.file-name {
+  flex: 1;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--white);
+}
+
+.file-result {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.modal-actions {
+  padding: 20px 24px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+}
+
+.btn-cancel:hover {
+  background: var(--surface2);
+  color: var(--white);
+}
+
+.btn-process {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  color: var(--white);
+  font-weight: 500;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 2000;
+  border: 1px solid;
+}
+
+.toast.show {
+  transform: translateX(0);
+}
+
+.toast.ok {
+  background: var(--success);
+  border-color: #059669;
+}
+
+.toast.erro {
+  background: var(--danger);
+  border-color: #dc2626;
+}
+
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
-  <div class="app">
-    <div class="header">
-      <div>
+
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <img src="data:image/png;base64,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" alt="Saint Germain" class="logo">
+      <div class="header-content">
         <h1>🏦 Conciliação Financeira</h1>
         <div class="subtitle">Competência 02 · 2026</div>
       </div>
-      <button class="btn" onclick="openModal()" id="btn-import">📎 Importar PDFs</button>
     </div>
-    <div class="main">
-      <table>
-        <thead>
-          <tr>
-            <th>UF</th>
-            <th>Valor</th>
-            <th>Vencimento</th>
-            <th>Pagamento</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="tbody">
-          <tr><td colspan="5" style="text-align:center;padding:40px;">Carregando...</td></tr>
-        </tbody>
-      </table>
+    
+    <div class="header-actions">
+      <button class="btn-outline" onclick="openSettings()" title="Configurações">⚙️</button>
+      <button class="btn" onclick="openModal()" id="btn-import">
+        📎 Importar PDFs
+      </button>
+      <button class="btn-outline" onclick="doLogout()" title="Sair">↗️</button>
     </div>
   </div>
 
-  <!-- MODAL IMPORT -->
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="modal">
-      <h2>📎 Importar Arquivos</h2>
-      <input type="file" multiple accept=".pdf,.ofx,.zip" style="margin:16px 0;padding:8px;width:100%;" onchange="dropFiles(this.files)">
-      <div class="file-queue" id="file-queue"></div>
-      <div style="display:flex;gap:12px;margin-top:20px;">
-        <button class="btn" style="background:var(--muted2);" onclick="closeModal()">Cancelar</button>
-        <button class="btn" id="btn-process" onclick="processAll()">
-          <span id="btn-process-text">Processar e Salvar</span>
-        </button>
+  <div class="main">
+    <div class="dashboard">
+      <!-- KPIs -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">📊 Resumo Geral</div>
+        </div>
+        <div class="section-content">
+          <div class="kpis" id="kpis">
+            <div class="kpi">
+              <div class="kpi-label">Total de GNREs</div>
+              <div class="kpi-value" id="kpi-total">—</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Valor Total</div>
+              <div class="kpi-value" id="kpi-valor">—</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Conciliadas</div>
+              <div class="kpi-value" id="kpi-conciliadas">—</div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-label">Pendentes</div>
+              <div class="kpi-value" id="kpi-pendentes">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">📋 Detalhes por Estado</div>
+        </div>
+        <div class="section-content">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>UF</th>
+                  <th>Valor</th>
+                  <th>Vencimento</th>
+                  <th>Pagamento</th>
+                  <th>Descrição</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody">
+                <tr>
+                  <td colspan="6" style="text-align:center;padding:40px;color:var(--muted);">
+                    Carregando dados...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
+</div>
 
-  <div class="toast" id="toast"></div>
+<!-- MODAL IMPORT -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📎 Importar Arquivos</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-content">
+      <div class="file-upload" onclick="triggerFileInput()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text">Clique ou arraste arquivos aqui</div>
+        <div class="upload-hint">Suporta: PDF, OFX, ZIP</div>
+        <input type="file" id="file-input" multiple accept=".pdf,.ofx,.zip" onchange="handleFileSelect(event)">
+      </div>
+      
+      <div class="file-queue" id="file-queue"></div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-process" id="btn-process" onclick="processAll()">
+        <span id="btn-process-text">Processar e Salvar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 // ── SUPABASE SETUP ────────────────────────────────────────────────────────────
 const sb = supabase.createClient('https://oyjquympntpkuphkhugc.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95anF1eW1wbnRwa3VwaGtodWdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDcwNzkwMjcsImV4cCI6MjAyMjY1NTAyN30.sb_publishable_or4fFSeXN6hiqpMdLYwJHg_Jff5FwJ-');
 
-let DATA = [];
-let fileQueue = [];
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+let currentUser = null;
+let currentRole = null; // 'admin' | 'visualizador'
 
-// ── AUTH CHECK ─────────────────────────────────────────────────────────────────
+// Verificar auth state
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session) {
+    currentUser = session.user;
+    await getUserRole(session.user.id);
     loadData();
   } else {
     window.location.href = 'https://guilhermesgb.github.io/Conciliacao_Financeira/';
   }
 });
 
-// ── SYSTEM LOCAL DE ANÁLISE ───────────────────────────────────────────────────
+async function getUserRole(userId) {
+  const { data } = await sb
+    .from('user_profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+  
+  currentRole = data?.role || 'visualizador';
+  
+  // Mostrar/ocultar botão import baseado no role
+  const btnImport = document.getElementById('btn-import');
+  if (currentRole === 'admin') {
+    btnImport.style.display = 'flex';
+  } else {
+    btnImport.style.display = 'none';
+  }
+}
+
+async function doLogin() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+  const btnText = document.getElementById('btn-login-text');
+
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span> Entrando…';
+  errEl.textContent = '';
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+
+  btn.disabled = false;
+  btnText.textContent = 'Entrar';
+
+  if (error) {
+    errEl.textContent = error.message === 'Invalid login credentials'
+      ? 'Email ou senha incorretos'
+      : error.message;
+  }
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+}
+
+// ── SISTEMA LOCAL DE ANÁLISE ─────────────────────────────────────────────────
+
+function openSettings() {
+  alert('✅ Sistema local ativo!\n\nO sistema agora analisa arquivos localmente sem necessidade de API externa.\n\nSuporta: OFX, PDF, ZIP');
+}
+
+// ── UPLOAD E PROCESSAMENTO ───────────────────────────────────────────────────
+let fileQueue = [];
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  fileQueue = [];
+  renderQueue();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function triggerFileInput() {
+  document.getElementById('file-input').click();
+}
+
+function handleFileSelect(event) {
+  dropFiles(event.target.files);
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  document.querySelector('.file-upload').classList.remove('dragover');
+  dropFiles(event.dataTransfer.files);
+}
+
+function handleDragOver(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  document.querySelector('.file-upload').classList.add('dragover');
+}
+
+function handleDragLeave(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  document.querySelector('.file-upload').classList.remove('dragover');
+}
+
+function dropFiles(files) {
+  for (const file of files) {
+    if (file.name.toLowerCase().match(/\.(pdf|ofx|zip)$/)) {
+      fileQueue.push({
+        file: file,
+        status: 'wait',
+        result: null
+      });
+    }
+  }
+  renderQueue();
+}
+
+function renderQueue() {
+  const container = document.getElementById('file-queue');
+  if (fileQueue.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = fileQueue.map(item => `
+    <div class="file-item">
+      <div class="file-status ${item.status}"></div>
+      <div class="file-name">${item.file.name}</div>
+      ${item.result ? `<div class="file-result">${typeof item.result === 'string' ? item.result : 'Processado'}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ── ANÁLISE LOCAL DE ARQUIVOS ─────────────────────────────────────────────────
 async function extractFromFile(file) {
   console.log('📄 Analisando arquivo:', file.name);
   
@@ -160,6 +810,8 @@ async function processOFX(file) {
           data_pagamento: data,
           descricao: 'Pagamento GNRE ' + uf
         });
+        
+        console.log('💰 GNRE detectado:', uf, '- R$', valor.toFixed(2));
       }
     }
   }
@@ -176,11 +828,14 @@ async function processPDF(file) {
   const uf = ufMatch ? ufMatch[1].toUpperCase() : 'XX';
   const isFCP = filename.includes('fcp');
   
+  console.log('📄 GNRE identificada:', uf, isFCP ? 'FCP' : 'Principal');
+  
   return {
     tipo: 'gnre',
     uf: uf,
     subtipo: isFCP ? 'FCP' : 'PRINCIPAL',
-    competencia: '02/2026'
+    competencia: '02/2026',
+    observacao: `GNRE ${uf}${isFCP ? ' FCP' : ''} - Análise do nome do arquivo`
   };
 }
 
@@ -204,6 +859,8 @@ async function processZIP(file) {
     }
   }
   
+  console.log('📦 ZIP processado:', gnres.length, 'GNREs encontradas');
+  
   return {
     tipo: 'zip_gnres',
     gnres: gnres
@@ -213,8 +870,11 @@ async function processZIP(file) {
 function extrairUF(nome) {
   const upper = nome.toUpperCase();
   const patterns = {
-    'PIAUI': 'PI', 'PERNAMBUCO': 'PE', 'PARANA': 'PR',
-    'MATO GROSSO DO SUL': 'MS', 'SAO PAULO': 'SP'
+    'GNRE SEFAZ PIAUI': 'PI', 'SEFAZ PIAUI': 'PI', 'PIAUI': 'PI',
+    'SEFAZ PE - GNRE ON-LINE': 'PE', 'SEFAZ PE': 'PE', 'PERNAMBUCO': 'PE',
+    'GUIA DE RECOLHIMENTO': 'PR', 'SEFAZ PR': 'PR', 'PARANA': 'PR',
+    'GNRE SEFAZ MATO GROSSO DO SUL': 'MS', 'SEFAZ MS': 'MS', 'MATO GROSSO DO SUL': 'MS',
+    'SAO PAULO': 'SP', 'SEFAZ SP': 'SP'
   };
   
   for (const [estado, uf] of Object.entries(patterns)) {
@@ -257,6 +917,8 @@ async function saveToSupabase(result) {
           descricao: transacao.descricao,
           updated_at: new Date().toISOString()
         }).eq('id', existing.id);
+        
+        console.log('✅ GNRE conciliada:', transacao.uf);
       }
     }
   }
@@ -274,39 +936,13 @@ async function saveToSupabase(result) {
     
     if (existing) {
       await sb.from('gnre_conciliacao').update({
-        observacao: 'GNRE ' + uf + ' identificada',
+        observacao: result.observacao || ('GNRE ' + uf + ' identificada'),
         updated_at: new Date().toISOString()
       }).eq('id', existing.id);
+      
+      console.log('✅ GNRE atualizada:', uf);
     }
   }
-}
-
-// ── MODAL FUNCTIONS ───────────────────────────────────────────────────────────
-function openModal() {
-  document.getElementById('modal-overlay').classList.add('open');
-  fileQueue = [];
-  renderQueue();
-}
-
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-}
-
-function dropFiles(files) {
-  for (const file of files) {
-    fileQueue.push({ file: file, status: 'wait' });
-  }
-  renderQueue();
-}
-
-function renderQueue() {
-  const container = document.getElementById('file-queue');
-  container.innerHTML = fileQueue.map(item => 
-    '<div class="file-item">' +
-      '<div class="file-status ' + item.status + '"></div>' +
-      '<span>' + item.file.name + '</span>' +
-    '</div>'
-  ).join('');
 }
 
 async function processAll() {
@@ -315,15 +951,21 @@ async function processAll() {
   btn.disabled = true;
   btnText.innerHTML = '<span class="spinner"></span> Processando…';
   
+  console.log('🚀 Processando arquivos...');
+  
   for (const item of fileQueue) {
     if (item.status === 'salvo') continue;
     
+    console.log('📄 Processando:', item.file.name);
     item.status = 'lendo';
     renderQueue();
     
     try {
       const result = await extractFromFile(item.file);
-      item.status = 'ok';
+      console.log('✅ Resultado:', result.tipo);
+      
+      item.result = result;
+      item.status = result.tipo === 'desconhecido' ? 'erro' : 'ok';
       renderQueue();
       
       if (item.status === 'ok') {
@@ -332,7 +974,8 @@ async function processAll() {
         renderQueue();
       }
     } catch(err) {
-      console.error('Erro:', err);
+      console.error('❌ Erro:', err.message);
+      item.result = err.message;
       item.status = 'erro';
       renderQueue();
     }
@@ -341,60 +984,118 @@ async function processAll() {
   btn.disabled = false;
   btnText.textContent = 'Processar e Salvar';
   
-  showToast('✅ Processamento concluído');
+  const salvos = fileQueue.filter(f => f.status === 'salvo').length;
+  const erros = fileQueue.filter(f => f.status === 'erro').length;
+  
+  showToast(salvos > 0 ? `✅ ${salvos} arquivo${salvos>1?'s':''} processado${salvos>1?'s':''} com sucesso${erros>0?' · '+erros+' com erro':''}` : '❌ Nenhum arquivo processado', salvos>0?'ok':'erro');
+  
+  console.log('🔄 Recarregando dashboard...');
   await loadData();
+  console.log('✅ Concluído!');
 }
 
-function showToast(msg) {
+function showToast(msg, type='ok') {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
-  toast.className = 'toast ok show';
-  setTimeout(() => toast.classList.remove('show'), 3000);
+  toast.className = `toast ${type} show`;
+  setTimeout(() => toast.classList.remove('show'), 4500);
 }
 
 // ── LOAD DATA ─────────────────────────────────────────────────────────────────
+let DATA = [];
+
+function setLoading(loading) {
+  document.querySelector('.main').classList.toggle('loading', loading);
+}
+
 async function loadData() {
   console.log('🔄 Carregando dados...');
+  setLoading(true);
   
   const { data, error } = await sb
     .from('gnre_conciliacao')
     .select('*')
-    .eq('competencia', '02/2026');
+    .eq('competencia', '02/2026')
+    .order('vencimento', { ascending: true });
 
   if (error) {
-    console.error('Erro:', error);
+    console.error('❌ Erro Supabase:', error);
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--danger);">
+        Erro ao carregar dados: ${error.message}</td></tr>`;
+    setLoading(false);
     return;
   }
 
-  renderTable(data);
+  console.log(`📊 ${data.length} registros carregados`);
+
+  DATA = data.map(r => {
+    const vencDate = r.vencimento ? new Date(r.vencimento + 'T12:00:00') : null;
+    const vencStr = vencDate ? vencDate.toLocaleDateString('pt-BR') : '—';
+    return {
+      uf: r.uf,
+      valor: parseFloat(r.valor),
+      venc: vencStr,
+      pagto: r.data_pagto || '—',
+      desc: r.descricao || '—',
+      status: r.status,
+    };
+  });
+
+  renderAll();
+  setLoading(false);
+  console.log('✅ Dashboard atualizado');
 }
 
-function renderTable(data) {
+function renderAll() {
+  renderKPIs();
+  renderTable();
+}
+
+function renderKPIs() {
+  const total = DATA.length;
+  const valorTotal = DATA.reduce((sum, item) => sum + item.valor, 0);
+  const conciliadas = DATA.filter(item => item.status === 'ok').length;
+  const pendentes = total - conciliadas;
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-valor').textContent = `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  document.getElementById('kpi-conciliadas').textContent = conciliadas;
+  document.getElementById('kpi-pendentes').textContent = pendentes;
+}
+
+function renderTable() {
   const tbody = document.getElementById('tbody');
   
-  if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum registro encontrado</td></tr>';
+  if (DATA.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);">Nenhum registro encontrado</td></tr>';
     return;
   }
   
-  tbody.innerHTML = data.map(r => 
-    '<tr>' +
-      '<td>' + r.uf + '</td>' +
-      '<td>R$ ' + (parseFloat(r.valor) || 0).toFixed(2) + '</td>' +
-      '<td>' + (r.vencimento || '—') + '</td>' +
-      '<td>' + (r.data_pagto || '—') + '</td>' +
-      '<td class="status-' + r.status + '">' + (r.status === 'ok' ? '✅ Pago' : '⏳ Pendente') + '</td>' +
-    '</tr>'
-  ).join('');
+  tbody.innerHTML = DATA.map(r => `
+    <tr>
+      <td class="uf">${r.uf}</td>
+      <td class="valor">R$ ${r.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+      <td>${r.venc}</td>
+      <td>${r.pagto}</td>
+      <td>${r.desc}</td>
+      <td>
+        <span class="status status-${r.status}">
+          ${r.status === 'ok' ? '✅ Pago' : '⏳ Pendente'}
+        </span>
+      </td>
+    </tr>
+  `).join('');
 }
 
-// ── REALTIME ──────────────────────────────────────────────────────────────────
+// ── REALTIME SUBSCRIPTION ─────────────────────────────────────────────────────
 sb.channel('gnre-changes')
   .on('postgres_changes', {
     event: '*',
     schema: 'public',
     table: 'gnre_conciliacao'
-  }, () => {
+  }, (payload) => {
+    console.log('🔔 REALTIME UPDATE detectado:', payload);
     loadData();
   })
   .subscribe();
